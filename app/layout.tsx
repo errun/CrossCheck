@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// TODO: 将下面的 url 改成你正式上线的域名，例如：https://crosscheck.yourdomain.com
-const siteUrl = "https://example.com";
+// 站点正式域名，用于 SEO / OpenGraph / Sitemap 等
+const siteUrl = "https://rfpcheck.net";
+
+// Google Analytics 4 测量 ID（来源于 Google Tag 后台）
+const GA_MEASUREMENT_ID = "G-4M4FRSZPJH";
 
 export const metadata: Metadata = {
 		title: "标书全能王 CrossCheck - 标书智能审查与废标风险检测",
@@ -41,7 +45,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className={inter.className}>{children}</body>
+	      <body className={inter.className}>
+	        {/* Google Analytics 4 */}
+	        <Script
+	          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+	          strategy="afterInteractive"
+	        />
+	        <Script id="gtag-init" strategy="afterInteractive">
+	          {`
+	            window.dataLayer = window.dataLayer || [];
+	            function gtag(){dataLayer.push(arguments);}
+	            gtag('js', new Date());
+	            gtag('config', '${GA_MEASUREMENT_ID}');
+	          `}
+	        </Script>
+	        {children}
+	      </body>
     </html>
   );
 }
