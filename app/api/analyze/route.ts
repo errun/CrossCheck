@@ -6,6 +6,7 @@ import { cacheManager } from '@/lib/cache';
 import { AnalysisResult } from '@/types';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import { existsSync } from 'fs';
 
 /**
@@ -60,7 +61,10 @@ export async function POST(request: NextRequest) {
     const docId = crypto.randomUUID();
 
     // 2. 保存原始文件到临时目录
-    const uploadDir = join(process.cwd(), 'tmp', 'uploads');
+    // 在无服务器环境（如 Vercel）中，代码目录通常是只读的，
+    // 只能写入操作系统提供的临时目录（通常是 /tmp）。
+    // 这里统一使用 os.tmpdir()，本地开发和线上都兼容。
+    const uploadDir = join(tmpdir(), 'uploads');
     if (!existsSync(uploadDir)) {
       await mkdir(uploadDir, { recursive: true });
     }

@@ -62,8 +62,8 @@ async function callGeminiAPI(
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://blot.new',
-        'X-Title': 'Blot Bid Checker',
+        'HTTP-Referer': 'https://cross-check-mu.vercel.app',
+        'X-Title': 'CrossCheck 标书全能王',
       },
       body: JSON.stringify({
         model: model,
@@ -100,7 +100,7 @@ async function callGeminiAPI(
  */
 function buildPrompt(pdfText: string): string {
   return `# 角色与目标
-**角色：** 您是专业的政府采购/招投标AI审查专家（Blot.new 审查核心）。
+**角色：** 您是专业的政府采购/招投标AI审查专家（CrossCheck 审查核心）。
 **任务目标：** 严格遵循以下《检查清单》对投标文件进行审查，识别所有废标（P1）、扣分（P2）、格式（P3）风险。
 **核心原则：** 必须确保所有查出的问题，均能追溯到**具体的页码和段落**。
 

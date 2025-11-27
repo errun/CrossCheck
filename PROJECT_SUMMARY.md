@@ -1,4 +1,4 @@
-# Blot.new 项目实施总结
+# CrossCheck 项目实施总结
 
 ## 项目概述
 
@@ -61,7 +61,7 @@ Next.js API: 解析 PDF 文本 (pdf-parse)
 ## 文件结构
 
 ```
-blot-bid-checker/
+CrossCheck/
 ├── app/
 │   ├── api/
 │   │   ├── analyze/route.ts      # 分析 API（上传+分析）

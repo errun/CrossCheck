@@ -1,7 +1,7 @@
-# Blot.new 启动脚本 (Windows PowerShell)
+# CrossCheck 启动脚本 (Windows PowerShell)
 
 Write-Host "==================================" -ForegroundColor Cyan
-Write-Host "  Blot.new 标书智能审查系统" -ForegroundColor Cyan
+Write-Host "  CrossCheck 标书智能审查系统" -ForegroundColor Cyan
 Write-Host "==================================" -ForegroundColor Cyan
 Write-Host ""
 
