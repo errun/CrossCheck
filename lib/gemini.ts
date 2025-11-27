@@ -62,8 +62,10 @@ async function callGeminiAPI(
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://cross-check-mu.vercel.app',
-        'X-Title': 'CrossCheck 标书全能王',
+	        // OpenRouter 推荐带上来源站点和应用标题，注意 Header 只能使用 ASCII 字符
+	        // 否则在 Node 的 fetch/undici 中会因为 ByteString 校验失败而报错
+	        'HTTP-Referer': 'https://www.rfpcheck.net',
+	        'X-Title': 'CrossCheck RFP Checker',
       },
       body: JSON.stringify({
         model: model,
