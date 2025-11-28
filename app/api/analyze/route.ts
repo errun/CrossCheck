@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
-import { analyzeWithGemini } from '@/lib/gemini';
+import { analyzeWithGemini, extractComplianceMatrix } from '@/lib/gemini';
 import { cacheManager } from '@/lib/cache';
 import { AnalysisResult, Language } from '@/types';
 import { writeFile, mkdir } from 'fs/promises';
@@ -18,8 +18,9 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const modelType = (formData.get('model') as string) || 'default';
-	    const langValue = (formData.get('lang') as string) || 'zh';
-	    const lang: Language = langValue === 'en' ? 'en' : 'zh';
+		    const langValue = (formData.get('lang') as string) || 'zh';
+		    const lang: Language = langValue === 'en' ? 'en' : 'zh';
+		    const mode = (formData.get('mode') as string) || 'scan';
 
     if (!file) {
       return NextResponse.json(
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Processing file: ${file.name}, size: ${file.size} bytes, model: ${modelType}`);
+	    console.log(`Processing file: ${file.name}, size: ${file.size} bytes, model: ${modelType}, mode: ${mode}`);
 
     // 1. 生成 doc_id
     const docId = crypto.randomUUID();
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
     let fullText = '';
     let totalPages = 0;
 
-    if (isPdf) {
+	    if (isPdf) {
       const pdfData = await pdf(buffer);
       fullText = pdfData.text;
       totalPages = pdfData.numpages;
@@ -95,34 +96,46 @@ export async function POST(request: NextRequest) {
       // Word 无法直接获知页数，这里按字符数粗略估算页数，主要用于进度展示
       totalPages = Math.max(1, Math.round(fullText.length / 1800));
       console.log(`DOCX parsed: ~${totalPages} pages (estimated), ${fullText.length} characters`);
-    }
+	    }
 
-	    // 4. 调用 AI 分析（根据前端传入的语言决定使用中/英文提示词与结果）
-	    console.log(`Calling AI for analysis with model: ${modelType}, lang: ${lang}...`);
-	    const aiResult = await analyzeWithGemini(fullText, modelType, lang);
+		    // 4. 根据 mode 决定调用哪种 AI 模式
+		    if (mode === 'matrix') {
+		      console.log(`Calling AI for compliance matrix with model: ${modelType}, lang: ${lang}...`);
+		      const matrixResult = await extractComplianceMatrix(fullText, modelType, lang);
+		      console.log(`Compliance matrix completed: ${matrixResult.items.length} requirements found`);
+		      return NextResponse.json({
+		        doc_id: docId,
+		        total_pages: totalPages,
+		        items: matrixResult.items,
+		      });
+		    }
 
-    // 5. 存入内存缓存
-    const result: AnalysisResult = {
-      doc_id: docId,
-      total_pages: totalPages,
-      errors: aiResult.errors,
-      status: 'completed',
-      created_at: Date.now(),
-      // 仅对 PDF 保留路径，供后续可能的 PDF 预览使用
-      pdf_path: isPdf ? filePath : undefined,
-    };
-    
-    cacheManager.set(docId, result);
-    
-    console.log(`Analysis completed: ${aiResult.errors.length} errors found`);
-    
-    // 5. 返回结果
-    return NextResponse.json({
-      doc_id: docId,
-      total_pages: totalPages,
-      errors: aiResult.errors,
-      error_count: aiResult.errors.length,
-    });
+		    // 默认 scan 模式：保持现有标书扫描逻辑不变
+		    console.log(`Calling AI for analysis with model: ${modelType}, lang: ${lang}...`);
+		    const aiResult = await analyzeWithGemini(fullText, modelType, lang);
+
+	    // 5. 存入内存缓存
+	    const result: AnalysisResult = {
+	      doc_id: docId,
+	      total_pages: totalPages,
+	      errors: aiResult.errors,
+	      status: 'completed',
+	      created_at: Date.now(),
+	      // 仅对 PDF 保留路径，供后续可能的 PDF 预览使用
+	      pdf_path: isPdf ? filePath : undefined,
+	    };
+	    
+	    cacheManager.set(docId, result);
+	    
+	    console.log(`Analysis completed: ${aiResult.errors.length} errors found`);
+	    
+	    // 5. 返回结果
+	    return NextResponse.json({
+	      doc_id: docId,
+	      total_pages: totalPages,
+	      errors: aiResult.errors,
+	      error_count: aiResult.errors.length,
+	    });
     
   } catch (error: any) {
     console.error('Analysis error:', error);

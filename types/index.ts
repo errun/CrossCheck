@@ -30,20 +30,26 @@ export interface ProgressPayload {
 
 // 分析结果
 export interface AnalysisResult {
-  doc_id: string;
-  total_pages: number;
-  errors: ErrorItem[];
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  created_at: number;
-  pdf_path?: string; // PDF 文件路径
+	doc_id: string;
+	total_pages: number;
+	errors: ErrorItem[];
+	status: 'pending' | 'running' | 'completed' | 'failed';
+	created_at: number;
+	pdf_path?: string; // PDF 文件路径
 }
 
-// AI 响应格式
+// AI 响应格式（标书扫描）
 export interface AIResponse {
-	  errors: Omit<ErrorItem, 'error_id'>[];
-	}
+	errors: Omit<ErrorItem, 'error_id'>[];
+}
 
-	// 界面与服务端共用的语言类型
-	export type Language = 'zh' | 'en';
+// 合规矩阵条目
+export interface ComplianceMatrixItem {
+	id: number;
+	text: string;
+	page: number;
+	section: string;
+}
 
-	
+// 界面与服务端共用的语言类型
+export type Language = 'zh' | 'en';

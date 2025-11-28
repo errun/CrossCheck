@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Upload, FileText, AlertCircle, CheckCircle2, Loader2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +12,9 @@ const translations: Record<Language, {
   appName: string;
   heroTitle: string;
   heroSubtitle: string;
-  uploadCardTitle: string;
+	matrixLinkLabel: string;
+	matrixLinkDesc: string;
+	  uploadCardTitle: string;
   uploadCardDesc: string;
   uploadPlaceholder: string;
   analyzeButton: string;
@@ -40,13 +43,16 @@ const translations: Record<Language, {
   suggestionPrefix: string;
   confidenceLabel: string;
   defaultErrorMessage: string;
-  langSwitchZh: string;
-  langSwitchEn: string;
+	  docNotSupportedMessage: string;
+	  langSwitchZh: string;
+	  langSwitchEn: string;
 }> = {
   zh: {
     appName: '标书全能王',
     heroTitle: '标书全能王',
     heroSubtitle: 'AI 驱动的标书自动审查与可视化分析',
+	    matrixLinkLabel: 'AI 合规矩阵生成器',
+	    matrixLinkDesc: '只需上传 RFP，一键提取必须/应条款并生成 Excel 合规检查表。',
     uploadCardTitle: '上传标书文件',
     uploadCardDesc: '支持 PDF / Word(.docx) 格式，最大 50MB',
     uploadPlaceholder: '点击选择 PDF / Word 文件',
@@ -76,6 +82,8 @@ const translations: Record<Language, {
     suggestionPrefix: '💡 ',
     confidenceLabel: '置信度',
     defaultErrorMessage: '分析失败，请重试',
+	    docNotSupportedMessage:
+	      '当前在线版本暂不支持直接解析 .doc，请先在本地另存为 .docx 或导出为 PDF 后再上传。',
     langSwitchZh: '中文',
     langSwitchEn: 'English',
   },
@@ -83,6 +91,8 @@ const translations: Record<Language, {
     appName: 'CrossCheck',
     heroTitle: 'CrossCheck Bid Proposal Checker',
     heroSubtitle: 'AI-powered automatic review and visual analysis for bid proposals',
+	    matrixLinkLabel: 'AI Compliance Matrix Generator',
+	    matrixLinkDesc: 'Upload only the RFP to extract mandatory requirements into an Excel compliance checklist.',
     uploadCardTitle: 'Upload Bid Document',
     uploadCardDesc: 'Supports PDF / Word (.docx), up to 50MB',
     uploadPlaceholder: 'Click to choose a PDF / Word file',
@@ -112,6 +122,8 @@ const translations: Record<Language, {
     suggestionPrefix: '💡 ',
     confidenceLabel: 'Confidence',
     defaultErrorMessage: 'Analysis failed, please try again',
+	    docNotSupportedMessage:
+	      'This online version does not currently support parsing .doc files directly. Please save the file as .docx or export it to PDF locally before uploading.',
     langSwitchZh: '中文',
     langSwitchEn: 'English',
   },
@@ -181,7 +193,7 @@ export default function HomePage() {
     }
   }, []);
 
-  const t = translations[lang];
+	  const t = translations[lang];
 
   const handleLanguageChange = (nextLang: Language) => {
     setLang(nextLang);
@@ -190,14 +202,27 @@ export default function HomePage() {
     }
   };
 
-		  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setError('');
-      setResult(null);
-    }
-		  };
+			  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+	    const selectedFile = e.target.files?.[0];
+	    if (!selectedFile) return;
+
+	    const lowerName = selectedFile.name.toLowerCase();
+	    // 如果是旧版 .doc（而不是 .docx），前端直接提示暂不支持
+	    if (lowerName.endsWith('.doc') && !lowerName.endsWith('.docx')) {
+	      setFile(null);
+	      setResult(null);
+		      setError(t.docNotSupportedMessage);
+	      // 重置 input，方便用户重新选择
+	      try {
+	        e.target.value = '';
+	      } catch {}
+	      return;
+	    }
+
+	    setFile(selectedFile);
+	    setError('');
+	    setResult(null);
+			  };
 
 			  const handleAnalyze = async (modelType: 'default' = 'default') => {
     if (!file) return;
@@ -272,6 +297,17 @@ export default function HomePage() {
 		            <p className="text-gray-600">
 		              {t.heroSubtitle}
 		            </p>
+	            <div className="mt-3">
+	              <Link
+	                href="/compliance-matrix"
+	                className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 underline-offset-4 hover:underline"
+	              >
+	                {t.matrixLinkLabel}
+	              </Link>
+	              <p className="mt-1 text-xs text-gray-500 max-w-xl">
+	                {t.matrixLinkDesc}
+	              </p>
+	            </div>
 		          </div>
 		          <div className="flex justify-center md:justify-end gap-2">
 		            <button
@@ -310,10 +346,10 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
+	                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
 	                  <input
 	                    type="file"
-	                    accept=".pdf,.docx"
+			                    accept=".pdf,.doc,.docx"
 	                    onChange={handleFileChange}
 	                    className="hidden"
 	                    id="file-upload"

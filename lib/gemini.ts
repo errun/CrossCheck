@@ -1,4 +1,4 @@
-import { AIResponse, ErrorItem, Language } from '@/types';
+import { AIResponse, ComplianceMatrixItem, ErrorItem, Language } from '@/types';
 
 /**
  * 调用 Gemini AI 分析标书内容
@@ -33,7 +33,74 @@ export async function analyzeWithGemini(
     };
   }
 
-	  return callGeminiAPI(pdfText, apiKey, modelType, lang);
+		  return callGeminiAPI(pdfText, apiKey, modelType, lang);
+}
+
+/**
+	 * 提取 RFP 中的强制性要求，生成合规矩阵（matrix 模式）
+	 */
+export async function extractComplianceMatrix(
+	  pdfText: string,
+	  modelType: string = 'default',
+	  lang: Language = 'zh',
+): Promise<{ items: ComplianceMatrixItem[] }> {
+	  const apiKey = process.env.OPENROUTER_API_KEY;
+
+	  if (!apiKey) {
+	    throw new Error('OPENROUTER_API_KEY is not configured');
+	  }
+
+	  // 合规矩阵目前只对前 80k 字符进行分析，避免提示词过长
+	  const MAX_CHUNK_SIZE = 80000;
+	  const truncated = pdfText.substring(0, MAX_CHUNK_SIZE);
+	  const prompt = buildComplianceMatrixPrompt(truncated, lang);
+
+	  // 复用与标书扫描相同的模型映射
+	  const modelMap: Record<string, string> = {
+	    default: 'google/gemini-2.5-flash',
+	    gpt5: 'openai/gpt-5',
+	    gemini3: 'google/gemini-3-pro-preview',
+	    claude35: 'anthropic/claude-3.5-sonnet',
+	  };
+	  const model = modelMap[modelType] || modelMap.default;
+
+		  try {
+		    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+		      method: 'POST',
+		      headers: {
+		        'Content-Type': 'application/json',
+		        Authorization: `Bearer ${apiKey}`,
+		        // 注意：Header 必须保持 ASCII，不能包含中文
+		        // 新主域名：rfpai.io
+		        'HTTP-Referer': 'https://rfpai.io',
+		        'X-Title': 'CrossCheck Compliance Matrix',
+		      },
+	      body: JSON.stringify({
+	        model,
+	        messages: [
+	          {
+	            role: 'user',
+	            content: prompt,
+	          },
+	        ],
+	        temperature: 0.2,
+	        max_tokens: 6000,
+	      }),
+	    });
+
+	    if (!response.ok) {
+	      const errorText = await response.text();
+	      throw new Error(`OpenRouter API error (matrix): ${response.status} - ${errorText}`);
+	    }
+
+	    const data = await response.json();
+	    const aiResponse = data.choices[0].message.content as string;
+	    console.log('Matrix AI Response (first 500 chars):', aiResponse.substring(0, 500));
+	    return parseComplianceMatrixResponse(aiResponse);
+	  } catch (error) {
+	    console.error('Compliance matrix API call failed:', error);
+	    throw error;
+	  }
 }
 
 /**
@@ -64,10 +131,11 @@ async function callGeminiAPI(
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
-	        // OpenRouter 推荐带上来源站点和应用标题，注意 Header 只能使用 ASCII 字符
-	        // 否则在 Node 的 fetch/undici 中会因为 ByteString 校验失败而报错
-	        'HTTP-Referer': 'https://www.rfpcheck.net',
-	        'X-Title': 'CrossCheck RFP Checker',
+		        // OpenRouter 推荐带上来源站点和应用标题，注意 Header 只能使用 ASCII 字符
+		        // 否则在 Node 的 fetch/undici 中会因为 ByteString 校验失败而报错
+		        // 新主站域名：rfpai.io
+		        'HTTP-Referer': 'https://rfpai.io',
+		        'X-Title': 'CrossCheck RFP Checker',
       },
       body: JSON.stringify({
         model: model,
@@ -99,10 +167,10 @@ async function callGeminiAPI(
   }
 }
 
-/**
-	 * 构建 AI Prompt（根据语言选择中英文提示）
-	 */
-	function buildPrompt(pdfText: string, lang: Language): string {
+	/**
+		 * 构建 AI Prompt（根据语言选择中英文提示）
+		 */
+		function buildPrompt(pdfText: string, lang: Language): string {
 	  const truncated = pdfText.substring(0, 80000);
 
 	  if (lang === 'en') {
@@ -171,8 +239,8 @@ Return **only** a JSON object in the following format. Do **not** include any ex
 9. **At most 5 error examples per rule.**`;
 	  }
 
-	  // 默认中文提示词
-	  return `# 角色与目标
+		  // 默认中文提示词
+		  return `# 角色与目标
 **角色：** 您是专业的政府采购/招投标AI审查专家（CrossCheck 审查核心）。
 **任务目标：** 严格遵循以下《检查清单》对投标文件进行审查，识别所有废标（P1）、扣分（P2）、格式（P3）风险。
 **核心原则：** 必须确保所有查出的问题，均能追溯到**具体的页码和段落**。
@@ -229,8 +297,100 @@ ${truncated}
 6. priority 必须是: P1, P2, P3 之一
 7. 只返回 JSON，不要有其他解释文字
 8. **优先返回 P1 和 P2 级别的错误，P3 级别的错误只返回最重要的前 5 个**
-9. **每个规则最多返回 5 个错误示例**`;
-	}
+			9. **每个规则最多返回 5 个错误示例**`;
+		}
+
+/**
+	 * 构建 AI Prompt（合规矩阵模式：从 RFP 中提取强制性要求）
+	 */
+function buildComplianceMatrixPrompt(rfpText: string, lang: Language): string {
+	  const base = `You are a senior RFP analyst.
+Your task is to read the following RFP document and extract **all mandatory requirements**.
+
+- Focus on sentences or clauses that express mandatory obligations, especially those containing keywords such as:
+  - "shall", "must", "will", "required", "mandatory"
+- For Chinese RFPs, also include phrases such as: "必须", "应当", "应当", "不得", "须提供".
+
+For each mandatory requirement you find, return one JSON object with:
+- "id": an incremental integer starting from 1
+- "text": the original requirement sentence or clause (as concise as possible but complete)
+- "page": the page number if you can infer it (otherwise 0)
+- "section": the reference section number or heading, e.g. "3.1", "4.2.1" or a short section title.
+
+Return **only** a JSON array in the following format, with no extra explanation:
+\`\`\`json
+[
+  {
+    "id": 1,
+    "text": "The bidder shall provide at least three similar project references in the last three years.",
+    "page": 5,
+    "section": "3.1"
+  },
+  {
+    "id": 2,
+    "text": "The system must support 7x24 hours operation with no single point of failure.",
+    "page": 8,
+    "section": "4.2.1"
+  }
+]
+\`\`\`
+
+Important rules:
+1. Do NOT include optional or purely descriptive sentences.
+2. Prefer requirements that clearly describe what the bidder **shall/must** do or provide.
+3. If you cannot infer page number or section, use 0 for page and an empty string for section.
+4. Output must be valid JSON array, with no trailing commas.
+
+Now analyze the following RFP text and output the JSON array of mandatory requirements:`;
+
+	  return `${base}
+
+----- BEGIN RFP TEXT -----
+${rfpText}
+----- END RFP TEXT -----`;
+}
+
+/**
+	 * 解析 AI 返回的合规矩阵 JSON
+	 */
+function parseComplianceMatrixResponse(aiResponse: string): { items: ComplianceMatrixItem[] } {
+	  try {
+	    let jsonStr = aiResponse.trim();
+
+	    // 移除 markdown 代码块标记
+	    if (jsonStr.startsWith('```json')) {
+	      jsonStr = jsonStr.replace(/```json\s*/i, '').replace(/```\s*$/i, '');
+	    } else if (jsonStr.startsWith('```')) {
+	      jsonStr = jsonStr.replace(/```\s*/i, '').replace(/```\s*$/i, '');
+	    }
+
+	    jsonStr = jsonStr.trim();
+
+	    // 如果前后包含多余说明，只保留数组部分
+	    if (!jsonStr.startsWith('[')) {
+	      const firstBracket = jsonStr.indexOf('[');
+	      const lastBracket = jsonStr.lastIndexOf(']');
+	      if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+	        jsonStr = jsonStr.substring(firstBracket, lastBracket + 1);
+	      }
+	    }
+
+	    const rawItems: any[] = JSON.parse(jsonStr);
+	    const items: ComplianceMatrixItem[] = rawItems.map((raw, index) => ({
+	      id: typeof raw.id === 'number' ? raw.id : index + 1,
+	      text: String(raw.text || raw.requirement || ''),
+	      page: typeof raw.page === 'number' ? raw.page : Number(raw.page) || 0,
+	      section: String(raw.section || raw.section_id || ''),
+	    }));
+
+	    console.log(`Parsed ${items.length} compliance requirements from AI response`);
+	    return { items };
+	  } catch (e) {
+	    console.error('Compliance matrix parse error:', e);
+	    console.error('Raw matrix response (first 1000 chars):', aiResponse.substring(0, 1000));
+	    return { items: [] };
+	  }
+}
 
 /**
  * 解析 AI 返回的 JSON
