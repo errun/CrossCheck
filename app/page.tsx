@@ -5,9 +5,7 @@ import { Upload, FileText, AlertCircle, CheckCircle2, Loader2, Download } from '
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ErrorItem } from '@/types';
-
-type Language = 'zh' | 'en';
+import { ErrorItem, Language } from '@/types';
 
 const translations: Record<Language, {
   appName: string;
@@ -121,31 +119,37 @@ const translations: Record<Language, {
 
 // 从建议中提取正确的文本
 function extractCorrectText(suggestion: string): string {
-  // 尝试提取引号中的内容
-  const quoteMatch = suggestion.match(/[""]([^""]+)[""]|"([^"]+)"/);
-  if (quoteMatch) {
-    return quoteMatch[1] || quoteMatch[2];
-  }
+	  // 尝试提取引号中的内容
+	  const quoteMatch = suggestion.match(/[""]([^""]+)[""]|"([^"]+)"/);
+	  if (quoteMatch) {
+	    return quoteMatch[1] || quoteMatch[2];
+	  }
 
-  // 尝试提取"应为"、"改为"、"修改为"等关键词后的内容
-  const patterns = [
-    /应为[：:]\s*(.+?)(?:[。，,；;]|$)/,
-    /改为[：:]\s*(.+?)(?:[。，,；;]|$)/,
-    /修改为[：:]\s*(.+?)(?:[。，,；;]|$)/,
-    /正确[的是]*[：:]\s*(.+?)(?:[。，,；;]|$)/,
-    /建议[：:]\s*(.+?)(?:[。，,；;]|$)/,
-  ];
+	  // 尝试提取"应为"、"改为"、"修改为"等关键词后的内容（兼容中英文提示）
+	  const patterns = [
+	    // 中文提示格式
+	    /应为[：:]\s*(.+?)(?:[。，,；;]|$)/,
+	    /改为[：:]\s*(.+?)(?:[。，,；;]|$)/,
+	    /修改为[：:]\s*(.+?)(?:[。，,；;]|$)/,
+	    /正确[的是]*[：:]\s*(.+?)(?:[。，,；;]|$)/,
+	    /建议[：:]\s*(.+?)(?:[。，,；;]|$)/,
+	    // 英文提示格式
+	    /should be[:：]\s*(.+?)(?:[.,;]|$)/i,
+	    /change to[:：]\s*(.+?)(?:[.,;]|$)/i,
+	    /correct (?:text|version|is)[:：]\s*(.+?)(?:[.,;]|$)/i,
+	    /suggest(?:ed)?[:：]\s*(.+?)(?:[.,;]|$)/i,
+	  ];
 
-  for (const pattern of patterns) {
-    const match = suggestion.match(pattern);
-    if (match) {
-      return match[1].trim();
-    }
-  }
+	  for (const pattern of patterns) {
+	    const match = suggestion.match(pattern);
+	    if (match) {
+	      return match[1].trim();
+	    }
+	  }
 
-  // 如果无法提取，返回整个建议
-  return suggestion;
-}
+	  // 如果无法提取，返回整个建议
+	  return suggestion;
+	}
 
 export default function HomePage() {
   const [lang, setLang] = useState<Language>('zh');
@@ -206,6 +210,8 @@ export default function HomePage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('model', modelType);
+	      // 将当前界面语言一并传给后端，便于选择中英文提示词和返回结果语言
+	      formData.append('lang', lang);
 
       // 模拟逐页扫描动画
       const estimatedPages = 50;

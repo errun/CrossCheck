@@ -40,6 +40,10 @@ export interface AnalysisResult {
 
 // AI 响应格式
 export interface AIResponse {
-  errors: Omit<ErrorItem, 'error_id'>[];
-}
+	  errors: Omit<ErrorItem, 'error_id'>[];
+	}
 
+	// 界面与服务端共用的语言类型
+	export type Language = 'zh' | 'en';
+
+	

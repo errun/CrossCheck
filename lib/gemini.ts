@@ -1,11 +1,12 @@
-import { AIResponse, ErrorItem } from '@/types';
+import { AIResponse, ErrorItem, Language } from '@/types';
 
 /**
  * 调用 Gemini AI 分析标书内容
  */
 export async function analyzeWithGemini(
-  pdfText: string,
-  modelType: string = 'default'
+	pdfText: string,
+	modelType: string = 'default',
+	lang: Language = 'zh',
 ): Promise<{ errors: ErrorItem[] }> {
   const apiKey = process.env.OPENROUTER_API_KEY;
 
@@ -13,18 +14,18 @@ export async function analyzeWithGemini(
     throw new Error('OPENROUTER_API_KEY is not configured');
   }
 
-  // 如果文本太长，分批处理
+	  // 如果文本太长，分批处理
   const MAX_CHUNK_SIZE = 100000;
 
   if (pdfText.length > MAX_CHUNK_SIZE) {
     console.log(`Text too long (${pdfText.length} chars), splitting into chunks...`);
     const chunks = splitIntoChunks(pdfText, MAX_CHUNK_SIZE);
-    const results = await Promise.all(
-      chunks.map((chunk, index) => {
-        console.log(`Processing chunk ${index + 1}/${chunks.length}`);
-        return callGeminiAPI(chunk, apiKey, modelType);
-      })
-    );
+	    const results = await Promise.all(
+	      chunks.map((chunk, index) => {
+	        console.log(`Processing chunk ${index + 1}/${chunks.length}, lang: ${lang}`);
+	        return callGeminiAPI(chunk, apiKey, modelType, lang);
+	      })
+	    );
 
     // 合并结果
     return {
@@ -32,18 +33,19 @@ export async function analyzeWithGemini(
     };
   }
 
-  return callGeminiAPI(pdfText, apiKey, modelType);
+	  return callGeminiAPI(pdfText, apiKey, modelType, lang);
 }
 
 /**
  * 调用 OpenRouter API (Gemini)
  */
 async function callGeminiAPI(
-  pdfText: string,
-  apiKey: string,
-  modelType: string = 'default'
+	pdfText: string,
+	apiKey: string,
+	modelType: string = 'default',
+	lang: Language = 'zh',
 ): Promise<{ errors: ErrorItem[] }> {
-  const prompt = buildPrompt(pdfText);
+	  const prompt = buildPrompt(pdfText, lang);
 
   // 根据 modelType 选择模型
   const modelMap: Record<string, string> = {
@@ -85,7 +87,7 @@ async function callGeminiAPI(
       throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
     }
     
-    const data = await response.json();
+	    const data = await response.json();
     const aiResponse = data.choices[0].message.content;
     
     console.log('AI Response:', aiResponse.substring(0, 500));
@@ -98,16 +100,85 @@ async function callGeminiAPI(
 }
 
 /**
- * 构建 AI Prompt
- */
-function buildPrompt(pdfText: string): string {
-  return `# 角色与目标
+	 * 构建 AI Prompt（根据语言选择中英文提示）
+	 */
+	function buildPrompt(pdfText: string, lang: Language): string {
+	  const truncated = pdfText.substring(0, 80000);
+
+	  if (lang === 'en') {
+	    return `# Role & Objective
+You are an expert AI assistant specialized in government procurement and bid proposal review (CrossCheck core engine).
+
+**Goal:** Strictly follow the following **Checklist & Rules** to review the bid document, and identify all risks in three levels:
+- **P1**: Fatal issues that may directly cause bid rejection
+- **P2**: Major issues that may cause score deduction or disadvantages
+- **P3**: Formatting / minor issues
+
+**Key principle:** Every issue you return **must be traceable to a specific page number and text snippet**.
+
+# Full bid document text
+${truncated}
+
+# Checklist & Rules
+| ID | Rule | Priority | Description |
+| :--- | :--- | :--- | :--- |
+| **R0001** | **Price consistency** | **P1** | Extract the total price (both uppercase and lowercase if available) from the “Bid opening summary table” and the “Detailed quotation table”, and check if they are fully consistent. |
+| **R0002** | **Typos & formatting** | **P3** | Scan the whole document line by line to find typos, wrong punctuation, extra spaces, inconsistent page numbers, etc. **For typo errors, the suggestion field must clearly give the corrected text in one of these formats: "should be: CORRECT_TEXT" or "correct text: CORRECT_TEXT".** |
+| **R0003** | **Identity information consistency** | **P1** | Extract the company full name, short name, and unified social credit code (or registration number) and make sure they are fully consistent. |
+| **F2** | **Mandatory clauses negative deviation** | **P1** | Extract all clauses marked with "★" and check whether they are fully satisfied. |
+| **S1** | **Important technical parameters negative deviation** | **P2** | Extract all clauses marked with "▲" and identify any negative deviation. |
+| **S2** | **Missing supporting documents** | **P2** | Check whether all required technical/supporting documents are provided and valid. |
+| **R4** | **Signature & stamping completeness** | **P3** | Check signatures, company chop / stamps, and whether all required pages are signed and stamped. |
+
+# Output format (MUST be valid JSON)
+Return **only** a JSON object in the following format. Do **not** include any extra explanation or commentary:
+\`\`\`json
+{
+  "errors": [
+    {
+      "rule_id": "R0001",
+      "title": "Inconsistent total price between tables",
+      "severity": "Critical",
+      "priority": "P1",
+      "page_no": 12,
+      "snippet": "Bid opening summary total: 1,000,000; detailed quotation total: 990,000",
+      "suggestion": "Unify and re-check all price tables to ensure the totals are exactly the same.",
+      "confidence": 0.95
+    },
+    {
+      "rule_id": "R0002",
+      "title": "Typo in text",
+      "severity": "Low",
+      "priority": "P3",
+      "page_no": 5,
+      "snippet": "conteent  , scientific",
+      "suggestion": "should be: content, scientific (remove the extra space and fix the typo)",
+      "confidence": 0.9
+    }
+  ]
+}
+\`\`\`
+
+## Important requirements
+1. Each error **must** contain an accurate **page_no**. If you cannot infer the exact page number, use 0.
+2. **snippet** must contain the concrete problematic text (no more than 50 characters if possible).
+3. Do **not** return errors with **confidence < 0.7**.
+4. If a rule has no issues, **do not** include that rule in the errors array.
+5. **severity** must be one of: Critical, High, Medium, Low.
+6. **priority** must be one of: P1, P2, P3.
+7. Return **only JSON**, with no extra explanation around it.
+8. **Prioritize P1 and P2 issues. P3 issues should only include the most important 5 items.**
+9. **At most 5 error examples per rule.**`;
+	  }
+
+	  // 默认中文提示词
+	  return `# 角色与目标
 **角色：** 您是专业的政府采购/招投标AI审查专家（CrossCheck 审查核心）。
 **任务目标：** 严格遵循以下《检查清单》对投标文件进行审查，识别所有废标（P1）、扣分（P2）、格式（P3）风险。
 **核心原则：** 必须确保所有查出的问题，均能追溯到**具体的页码和段落**。
 
 # 投标文件内容全文:
-${pdfText.substring(0, 80000)}
+${truncated}
 
 # 检查清单与规则
 | ID | 检查项 | 优先级 | 检查内容 |
@@ -159,7 +230,7 @@ ${pdfText.substring(0, 80000)}
 7. 只返回 JSON，不要有其他解释文字
 8. **优先返回 P1 和 P2 级别的错误，P3 级别的错误只返回最重要的前 5 个**
 9. **每个规则最多返回 5 个错误示例**`;
-}
+	}
 
 /**
  * 解析 AI 返回的 JSON

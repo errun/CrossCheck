@@ -3,7 +3,7 @@ import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
 import { analyzeWithGemini } from '@/lib/gemini';
 import { cacheManager } from '@/lib/cache';
-import { AnalysisResult } from '@/types';
+import { AnalysisResult, Language } from '@/types';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -18,6 +18,8 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const modelType = (formData.get('model') as string) || 'default';
+	    const langValue = (formData.get('lang') as string) || 'zh';
+	    const lang: Language = langValue === 'en' ? 'en' : 'zh';
 
     if (!file) {
       return NextResponse.json(
@@ -95,9 +97,9 @@ export async function POST(request: NextRequest) {
       console.log(`DOCX parsed: ~${totalPages} pages (estimated), ${fullText.length} characters`);
     }
 
-    // 4. 调用 AI 分析
-    console.log(`Calling AI for analysis with model: ${modelType}...`);
-    const aiResult = await analyzeWithGemini(fullText, modelType);
+	    // 4. 调用 AI 分析（根据前端传入的语言决定使用中/英文提示词与结果）
+	    console.log(`Calling AI for analysis with model: ${modelType}, lang: ${lang}...`);
+	    const aiResult = await analyzeWithGemini(fullText, modelType, lang);
 
     // 5. 存入内存缓存
     const result: AnalysisResult = {
