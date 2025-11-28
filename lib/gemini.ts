@@ -304,7 +304,7 @@ ${truncated}
 	 * 构建 AI Prompt（合规矩阵模式：从 RFP 中提取强制性要求）
 	 */
 function buildComplianceMatrixPrompt(rfpText: string, lang: Language): string {
-	  const base = `You are a senior RFP analyst.
+		  const base = `You are an expert RFP analyst.
 Your task is to read the following RFP document and extract **all mandatory requirements**.
 
 - Focus on sentences or clauses that express mandatory obligations, especially those containing keywords such as:

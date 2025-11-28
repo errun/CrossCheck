@@ -12,31 +12,31 @@ const siteUrl = "https://rfpcheck.net";
 const GA_MEASUREMENT_ID = "G-4M4FRSZPJH";
 
 export const metadata: Metadata = {
-		title: "标书全能王 CrossCheck - 标书智能审查与废标风险检测",
-		description:
-			"标书全能王 CrossCheck，基于 Gemini AI 的标书智能审查工具，一键检查投标文件中的废标风险、错别字、格式问题与评分项偏离，支持 PDF / Word 标书上传，适用于政府采购、工程招标等多种场景。",
-		metadataBase: new URL(siteUrl),
-		openGraph: {
-				title: "标书全能王 CrossCheck - 标书智能审查与废标风险检测",
-				description:
-					"CrossCheck 标书全能王，AI 驱动的标书自动审查系统，帮助投标人快速发现废标风险与扣分项。",
-					type: "website",
-					url: siteUrl,
-					locale: "zh_CN",
-					siteName: "标书全能王 CrossCheck",
-		},
-		// 关键词标签有助于中文搜索引擎（如百度）理解页面主题
-		keywords: [
-				"标书检查",
-				"标书智能审查",
-				"投标文件检查",
-				"废标风险检测",
-				"招投标文书审核",
-				"标书 AI 工具",
-				"bid proposal checker",
-				"tender document review",
-		],
-};
+			title: "RFPCheck - AI Proposal Compliance Checker & Bid Error Scanner",
+			description:
+				"Automate your bid review. Our AI Cross-Reference Tool scans proposals against RFPs to detect pricing errors, missing requirements, and prevent disqualification.",
+			metadataBase: new URL(siteUrl),
+			openGraph: {
+						title: "RFPCheck - AI Proposal Compliance Checker & Bid Error Scanner",
+						description:
+							"Automate your bid review. Our AI Cross-Reference Tool scans proposals against RFPs to detect pricing errors, missing requirements, and prevent disqualification.",
+								type: "website",
+								url: siteUrl,
+								locale: "zh_CN",
+								siteName: "标书全能王 CrossCheck",
+			},
+			// 关键词标签有助于中文搜索引擎（如百度）理解页面主题
+			keywords: [
+					"标书检查",
+					"标书智能审查",
+					"投标文件检查",
+					"废标风险检测",
+					"招投标文书审核",
+					"标书 AI 工具",
+					"bid proposal checker",
+					"tender document review",
+			],
+		};
 
 export default function RootLayout({
   children,
@@ -45,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-	      <body className={inter.className}>
+	      <body className={`${inter.className} bg-slate-50 text-slate-900`}>
 	        {/* Google Analytics 4 */}
 	        <Script
 	          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Upload, FileText, AlertCircle, CheckCircle2, Loader2, Download } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle2, Loader2, Download, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -45,12 +45,17 @@ const translations: Record<Language, {
   defaultErrorMessage: string;
 	  docNotSupportedMessage: string;
 	  langSwitchZh: string;
-	  langSwitchEn: string;
+		  langSwitchEn: string;
+		  faqTitle: string;
+		  faqQ1: string;
+		  faqA1: string;
+		  faqQ2: string;
+		  faqA2: string;
 }> = {
   zh: {
     appName: '标书全能王',
-    heroTitle: '标书全能王',
-    heroSubtitle: 'AI 驱动的标书自动审查与可视化分析',
+	    heroTitle: '自动化标书合规性与错误扫描',
+	    heroSubtitle: 'AI 驱动的标书自动审查与可视化分析',
 	    matrixLinkLabel: 'AI 合规矩阵生成器',
 	    matrixLinkDesc: '只需上传 RFP，一键提取必须/应条款并生成 Excel 合规检查表。',
     uploadCardTitle: '上传标书文件',
@@ -85,11 +90,18 @@ const translations: Record<Language, {
 	    docNotSupportedMessage:
 	      '当前在线版本暂不支持直接解析 .doc，请先在本地另存为 .docx 或导出为 PDF 后再上传。',
     langSwitchZh: '中文',
-    langSwitchEn: 'English',
+	    langSwitchEn: 'English',
+	    faqTitle: '常见问题：标书合规性与废标风险',
+	    faqQ1: '标书检查器是如何工作的？',
+	    faqA1:
+	      '您上传标书和/或 RFP 后，系统会用 AI 对全文进行逐页分析，对照招标文件中的关键条款，检查价格一致性、必输项缺失、错别字和身份信息等问题。',
+	    faqQ2: '它可以帮我避免废标吗？',
+	    faqA2:
+	      '没有任何工具能 100% 保证中标，但通过在提交前自动发现 P1 致命风险和重要合规缺口，它可以大幅降低因低级错误或漏项而导致的废标可能性。',
   },
   en: {
     appName: 'CrossCheck',
-    heroTitle: 'CrossCheck Bid Proposal Checker',
+	    heroTitle: 'Automated Proposal Compliance & Error Scanner',
     heroSubtitle: 'AI-powered automatic review and visual analysis for bid proposals',
 	    matrixLinkLabel: 'AI Compliance Matrix Generator',
 	    matrixLinkDesc: 'Upload only the RFP to extract mandatory requirements into an Excel compliance checklist.',
@@ -101,9 +113,9 @@ const translations: Record<Language, {
     analyzingDesc: 'AI is scanning your bid document page by page',
     scanningText: (current, total) => `Scanning page ${current} / ${total}`,
     ruleStatusRunning: 'Running',
-    rulePriceConsistency: 'Price consistency',
-    ruleTypos: 'Typos & formatting',
-    ruleIdentity: 'Identity information',
+	    rulePriceConsistency: 'Pricing Consistency Check',
+	    ruleTypos: 'Typos & formatting',
+	    ruleIdentity: 'Instant RFP Cross-Reference',
     totalPagesLabel: 'Total pages',
     p1Label: 'Critical issues',
     p2Label: 'Major issues',
@@ -124,8 +136,15 @@ const translations: Record<Language, {
     defaultErrorMessage: 'Analysis failed, please try again',
 	    docNotSupportedMessage:
 	      'This online version does not currently support parsing .doc files directly. Please save the file as .docx or export it to PDF locally before uploading.',
-    langSwitchZh: '中文',
-    langSwitchEn: 'English',
+	    langSwitchZh: '中文',
+	    langSwitchEn: 'English',
+	    faqTitle: 'FAQ: Bid checker & AI proposal compliance',
+	    faqQ1: 'How does the bid checker work?',
+	    faqA1:
+	      'Upload your bid proposal and RFP, and our AI proposal analysis engine cross-references them to detect pricing inconsistencies, missing mandatory requirements, formatting problems, and identity issues before you submit.',
+	    faqQ2: 'Can it prevent disqualification?',
+	    faqA2:
+	      'No tool can guarantee an award, but by automatically flagging P1-level compliance gaps and common bid errors before submission, the checker can significantly reduce the risk of disqualification.',
   },
 };
 
@@ -285,68 +304,115 @@ export default function HomePage() {
     window.open(url, '_blank');
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-		      <div className="container mx-auto px-4 py-8">
-		        {/* Header */}
-		        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-4">
-		          <div className="text-center md:text-left">
-		            <h1 className="text-4xl font-bold text-gray-900 mb-2">
-		              {t.heroTitle}
-		            </h1>
-		            <p className="text-gray-600">
-		              {t.heroSubtitle}
-		            </p>
-	            <div className="mt-3">
-	              <Link
-	                href="/compliance-matrix"
-	                className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 underline-offset-4 hover:underline"
-	              >
-	                {t.matrixLinkLabel}
-	              </Link>
-	              <p className="mt-1 text-xs text-gray-500 max-w-xl">
-	                {t.matrixLinkDesc}
-	              </p>
-	            </div>
+	  return (
+	    <div className="min-h-screen bg-slate-50">
+		      <div className="max-w-6xl mx-auto px-4 py-6 md:py-10 text-slate-900">
+		        {/* 顶部导航：品牌 + 主功能链接 + 语言切换 */}
+		        <div className="mb-10 flex items-center justify-between gap-8">
+		          <div className="flex items-center gap-3">
+		            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-lg shadow-sm">
+		              R
+		            </div>
+		            <div className="leading-tight">
+		              <p className="text-sm font-semibold text-slate-900">{t.appName}</p>
+		              <p className="text-xs text-slate-600">AI RFP &amp; bid compliance copilot</p>
+		            </div>
 		          </div>
-		          <div className="flex justify-center md:justify-end gap-2">
-		            <button
-		              type="button"
-		              onClick={() => handleLanguageChange('zh')}
-		              className={`px-3 py-1 rounded-full text-sm border ${
-		                lang === 'zh'
-		                  ? 'bg-blue-600 text-white border-blue-600'
-		                  : 'bg-white text-gray-700 border-gray-300'
-		              }`}
-		            >
-		              {t.langSwitchZh}
-		            </button>
-		            <button
-		              type="button"
-		              onClick={() => handleLanguageChange('en')}
-		              className={`px-3 py-1 rounded-full text-sm border ${
-		                lang === 'en'
-		                  ? 'bg-blue-600 text-white border-blue-600'
-		                  : 'bg-white text-gray-700 border-gray-300'
-		              }`}
-		            >
-		              {t.langSwitchEn}
-		            </button>
+		          <div className="flex items-center gap-6">
+		            <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">
+		              <Link
+		                href="/"
+		                className="hover:text-slate-900 transition-colors"
+		              >
+		                {lang === 'zh' ? '标书扫描器' : 'Bid Scanner'}
+		              </Link>
+		              <Link
+		                href="/compliance-matrix"
+		                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 transition-colors"
+		              >
+		                <span>{lang === 'zh' ? '合规矩阵生成器' : 'Compliance Matrix'}</span>
+		                <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+		                  NEW
+		                </span>
+		              </Link>
+		            </nav>
+		            <div className="flex justify-center gap-2">
+		              <button
+		                type="button"
+		                onClick={() => handleLanguageChange('zh')}
+		                className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+		                  lang === 'zh'
+		                    ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
+		                    : 'bg-transparent text-slate-600 border-slate-300 hover:border-slate-400'
+		                }`}
+		              >
+		                {t.langSwitchZh}
+		              </button>
+		              <button
+		                type="button"
+		                onClick={() => handleLanguageChange('en')}
+		                className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+		                  lang === 'en'
+		                    ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
+		                    : 'bg-transparent text-slate-600 border-slate-300 hover:border-slate-400'
+		                }`}
+		              >
+		                {t.langSwitchEn}
+		              </button>
+		            </div>
 		          </div>
 		        </div>
 
-        {/* 上传区 */}
-	        {!analyzing && !result && (
-          <Card className="max-w-2xl mx-auto">
+		        {/* Hero 区域，参考 Raphael 风格，但采用浅色 B2B SaaS 配色 */}
+		        <header className="mb-12 flex flex-col items-center text-center gap-4">
+		          <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-1 text-xs font-medium text-amber-700 shadow-sm">
+		            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+		            <span>{lang === 'zh' ? ' 标书合规性检查 · 废标风险预防' : 'AI proposal compliance · Disqualification risk guard'}</span>
+		          </div>
+		          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">
+		            {t.heroTitle}
+		          </h1>
+		          <p className="max-w-2xl text-base md:text-lg text-slate-600">
+		            {t.heroSubtitle}
+		          </p>
+		          <p className="text-base md:text-lg font-semibold text-slate-700">
+		            Don&apos;t let a decimal point ruin your month of work.
+		          </p>
+		          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+		            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs md:text-sm text-slate-700 border border-slate-200">
+		              AI proposal analysis
+		            </span>
+		            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs md:text-sm text-slate-700 border border-slate-200">
+		              Pricing consistency &amp; RFP cross-reference
+		            </span>
+		            <Link
+		              href="/compliance-matrix"
+		              className="inline-flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs md:text-sm font-semibold text-white shadow-sm transition-colors"
+		            >
+		              <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-semibold text-slate-950">
+		                NEW
+		              </span>
+		              <span>{t.matrixLinkLabel}</span>
+		              <ArrowRight className="h-4 w-4" />
+		            </Link>
+		          </div>
+		          <p className="mt-2 text-xs md:text-sm text-slate-500 max-w-xl">
+		            {t.matrixLinkDesc}
+		          </p>
+		        </header>
+
+	        {/* 上传区 */}
+		        {!analyzing && !result && (
+	          <Card className="max-w-2xl mx-auto bg-white border-slate-200 shadow-sm rounded-xl">
             <CardHeader>
 	              <CardTitle>{t.uploadCardTitle}</CardTitle>
 	              <CardDescription>
 			            {t.uploadCardDesc}
 	              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-	                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
+	            <CardContent>
+	              <div className="space-y-4">
+	                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors bg-slate-50">
 	                  <input
 	                    type="file"
 			                    accept=".pdf,.doc,.docx"
@@ -355,26 +421,26 @@ export default function HomePage() {
 	                    id="file-upload"
 	                  />
 		                  <label htmlFor="file-upload" className="cursor-pointer">
-                    <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-			                    <p className="text-sm text-gray-600">
+	                    <FileText className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+		                    <p className="text-sm text-slate-600">
 			                      {file ? file.name : t.uploadPlaceholder}
 			                    </p>
                   </label>
                 </div>
                 
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-2">
-                    <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-                    <p className="text-sm text-red-700">{error}</p>
-                  </div>
-                )}
+		                {error && (
+		                  <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 flex items-start gap-2">
+		                    <AlertCircle className="h-5 w-5 text-rose-600 mt-0.5" />
+		                    <p className="text-sm text-rose-700">{error}</p>
+		                  </div>
+		                )}
 
 		                {/* 仅保留单一模型按钮（Gemini 2.5 Flash） */}
 		                <div className="space-y-3">
 		                  <Button
 		                    onClick={() => handleAnalyze('default')}
 		                    disabled={!file}
-		                    className="w-full bg-amber-600 hover:bg-amber-700"
+		                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
 		                    size="lg"
 		                  >
 		                    <Upload className="mr-2 h-5 w-5" />
@@ -386,10 +452,10 @@ export default function HomePage() {
           </Card>
         )}
 
-        {/* 分析中 */}
-	        {analyzing && (
-          <div className="max-w-6xl mx-auto">
-            <Card>
+	        {/* 分析中 */}
+		        {analyzing && (
+	          <div className="max-w-6xl mx-auto">
+	            <Card className="bg-white border-slate-200 shadow-sm rounded-xl">
               <CardHeader>
 	                <CardTitle>{t.analyzingTitle}</CardTitle>
 	                <CardDescription>
@@ -404,9 +470,12 @@ export default function HomePage() {
 	                    <p className="text-lg font-semibold">
 	                      {t.scanningText(currentPage, totalPages)}
 	                    </p>
-                    <div className="w-full bg-gray-200 rounded-full h-2 mt-4">
+		                    <p className="sr-only">
+		                      AI proposal analysis progress indicator while the bid checker scans your document.
+		                    </p>
+	            <div className="w-full bg-slate-200 rounded-full h-2 mt-4">
                       <div 
-                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+	                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${(currentPage / totalPages) * 100}%` }}
                       />
                     </div>
@@ -424,54 +493,54 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* 结果页 */}
-	        {result && !analyzing && (
-          <div className="max-w-7xl mx-auto space-y-6">
+	        {/* 结果页 */}
+		        {result && !analyzing && (
+	          <div className="max-w-7xl mx-auto space-y-6">
             {/* 统计卡片 */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
+	            <Card className="bg-white border-slate-200 shadow-sm rounded-lg">
                 <CardContent className="pt-6">
-                  <div className="text-center">
-                    <FileText className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-	                    <p className="text-2xl font-bold">{result.total_pages}</p>
-	                    <p className="text-sm text-gray-600">{t.totalPagesLabel}</p>
-                  </div>
+	                  <div className="text-center">
+	                    <FileText className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+		                    <p className="text-2xl font-bold text-slate-900">{result.total_pages}</p>
+		                    <p className="text-sm text-slate-600">{t.totalPagesLabel}</p>
+	                </div>
                 </CardContent>
               </Card>
               
-              <Card>
+	            <Card className="bg-white border-slate-200 shadow-sm rounded-lg">
                 <CardContent className="pt-6">
-                  <div className="text-center">
-                    <AlertCircle className="h-8 w-8 mx-auto mb-2 text-red-500" />
-	                    <p className="text-2xl font-bold text-red-600">
+	                  <div className="text-center">
+	                    <AlertCircle className="h-8 w-8 mx-auto mb-2 text-rose-500" />
+		                    <p className="text-2xl font-bold text-rose-600">
 	                      {result.errors.filter((e: ErrorItem) => e.priority === 'P1').length}
 	                    </p>
-	                    <p className="text-sm text-gray-600">{t.p1Label}</p>
-                  </div>
+		                    <p className="text-sm text-slate-600">{t.p1Label}</p>
+	                </div>
                 </CardContent>
               </Card>
               
-              <Card>
+	            <Card className="bg-white border-slate-200 shadow-sm rounded-lg">
                 <CardContent className="pt-6">
-                  <div className="text-center">
-                    <AlertCircle className="h-8 w-8 mx-auto mb-2 text-orange-500" />
-	                    <p className="text-2xl font-bold text-orange-600">
+	                  <div className="text-center">
+	                    <AlertCircle className="h-8 w-8 mx-auto mb-2 text-amber-500" />
+		                    <p className="text-2xl font-bold text-amber-600">
 	                      {result.errors.filter((e: ErrorItem) => e.priority === 'P2').length}
 	                    </p>
-	                    <p className="text-sm text-gray-600">{t.p2Label}</p>
-                  </div>
+		                    <p className="text-sm text-slate-600">{t.p2Label}</p>
+	                </div>
                 </CardContent>
               </Card>
               
-              <Card>
+	            <Card className="bg-white border-slate-200 shadow-sm rounded-lg">
                 <CardContent className="pt-6">
-                  <div className="text-center">
-                    <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
-	                    <p className="text-2xl font-bold text-yellow-600">
+	                  <div className="text-center">
+	                    <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
+		                    <p className="text-2xl font-bold text-emerald-600">
 	                      {result.errors.filter((e: ErrorItem) => e.priority === 'P3').length}
 	                    </p>
-	                    <p className="text-sm text-gray-600">{t.p3Label}</p>
-                  </div>
+		                    <p className="text-sm text-slate-600">{t.p3Label}</p>
+	                </div>
                 </CardContent>
               </Card>
             </div>
@@ -504,22 +573,48 @@ export default function HomePage() {
 	            </div>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
+	      </div>
+		      {/* FAQ Section */}
+		      <section className="mt-16 bg-white/80 rounded-2xl shadow-sm border border-slate-200">
+		        <div className="px-6 py-6 md:px-8 md:py-8 max-w-5xl mx-auto">
+		          <h2 className="text-2xl font-semibold text-slate-900 mb-4">
+		            {t.faqTitle}
+		          </h2>
+		          <div className="space-y-6 text-sm md:text-base text-slate-700">
+		            <div>
+		              <h3 className="font-semibold text-slate-900">
+		                {t.faqQ1}
+		              </h3>
+		              <p className="mt-1">
+		                {t.faqA1}
+		              </p>
+		            </div>
+		            <div>
+		              <h3 className="font-semibold text-slate-900">
+		                {t.faqQ2}
+		              </h3>
+		              <p className="mt-1">
+		                {t.faqA2}
+		              </p>
+		            </div>
+		          </div>
+		        </div>
+		      </section>
+	    </div>
+	  );
+	}
 
 function RuleCard({ ruleId, title, statusLabel }: { ruleId: string; title: string; statusLabel: string }) {
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="flex justify-between items-center mb-2">
-          <span className="font-semibold">{ruleId}</span>
-	          <Badge variant="secondary">{statusLabel}</Badge>
-        </div>
-        <p className="text-sm text-gray-600">{title}</p>
-      </CardContent>
-    </Card>
+	    <Card className="bg-white border-slate-200 shadow-sm rounded-lg">
+	      <CardContent className="pt-6">
+	        <div className="flex justify-between items-center mb-2">
+	          <span className="font-semibold text-slate-900">{ruleId}</span>
+		          <Badge variant="secondary">{statusLabel}</Badge>
+	        </div>
+	        <p className="text-sm text-slate-600">{title}</p>
+	      </CardContent>
+	    </Card>
   );
 }
 
@@ -579,26 +674,26 @@ function ErrorSection({
   lang: Language;
 }) {
   const borderColor = {
-    destructive: 'border-red-500',
-    warning: 'border-orange-500',
-    info: 'border-yellow-500',
+	    destructive: 'border-rose-600',
+	    warning: 'border-amber-500',
+	    info: 'border-blue-500',
   }[variant];
 
   const t = translations[lang];
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {errors.map((error) => (
-            <div
-              key={error.error_id}
-              className={`border-l-4 ${borderColor} bg-gray-50 p-4 rounded`}
-            >
+	  return (
+	    <Card className="bg-white border border-slate-200 shadow-sm rounded-xl">
+	      <CardHeader>
+	        <CardTitle>{title}</CardTitle>
+	        <CardDescription>{description}</CardDescription>
+	      </CardHeader>
+	      <CardContent>
+	        <div className="space-y-4">
+	          {errors.map((error) => (
+	            <div
+	              key={error.error_id}
+	              className={`border-l-4 ${borderColor} bg-slate-50 p-4 rounded-lg`}
+	            >
               <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{error.rule_id}</Badge>
@@ -610,34 +705,34 @@ function ErrorSection({
               </div>
 
               {/* 错误内容 - 如果是错别字则标红 */}
-              {error.rule_id === 'R0002' ? (
-                <div className="text-sm mb-2">
-	                  <span className="text-gray-600">{t.errorContentLabel}</span>
-                  <span className="bg-red-100 text-red-700 px-1 rounded font-medium">
-                    {error.snippet}
-                  </span>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-700 mb-2">{error.snippet}</p>
-              )}
+	              {error.rule_id === 'R0002' ? (
+	                <div className="text-sm mb-2">
+		                  <span className="text-slate-600">{t.errorContentLabel}</span>
+	                  <span className="bg-rose-50 text-rose-700 px-1 rounded font-medium">
+	                    {error.snippet}
+	                  </span>
+	                </div>
+	              ) : (
+	                <p className="text-sm text-slate-700 mb-2">{error.snippet}</p>
+	              )}
 
               {/* 修正建议 - 如果是错别字则显示正确写法 */}
-              <div className="text-sm text-blue-600 mb-2">
+	              <div className="text-sm text-blue-600 mb-2">
                 {error.rule_id === 'R0002' ? (
                   <div>
 	                    <span className="font-semibold">{t.correctTextLabel}</span>
-                    <span className="bg-green-100 text-green-700 px-1 rounded ml-1">
+		                    <span className="bg-emerald-50 text-emerald-700 px-1 rounded ml-1">
                       {extractCorrectText(error.suggestion)}
                     </span>
                   </div>
                 ) : (
-	                  <span>{t.suggestionPrefix}{error.suggestion}</span>
+		                  <span>{t.suggestionPrefix}{error.suggestion}</span>
                 )}
               </div>
 
-              <p className="text-xs text-gray-500">
-	                {t.confidenceLabel}: {(error.confidence * 100).toFixed(0)}%
-              </p>
+	              <p className="text-xs text-slate-500">
+		                {t.confidenceLabel}: {(error.confidence * 100).toFixed(0)}%
+	              </p>
             </div>
           ))}
         </div>
