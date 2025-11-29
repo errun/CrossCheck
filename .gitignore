@@ -38,3 +38,7 @@ next-env.d.ts
 # temp files
 /tmp
 
+# local test folders (do not commit)
+test/
+testw/
+

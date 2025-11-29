@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Upload, FileText, Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,37 +23,34 @@ import {
 	import type { ComplianceMatrixItem, Language } from "@/types";
 import { downloadMatrixAsExcel } from "@/lib/exportMatrix";
 
-export default function ComplianceMatrixPage() {
-		const [lang, setLang] = useState<Language>("zh");
-		const [file, setFile] = useState<File | null>(null);
-		const [loading, setLoading] = useState(false);
-		const [error, setError] = useState<string>("");
-		const [items, setItems] = useState<ComplianceMatrixItem[]>([]);
-		const [complyMap, setComplyMap] = useState<Record<number, string>>({});
-		const [commentMap, setCommentMap] = useState<Record<number, string>>({});
+const faqContent = {
+	zh: {
+		title: "常见问题：合规矩阵与 RFP 提取",
+		q1: "什么是合规矩阵？",
+		a1: "合规矩阵是把 RFP 中的必须/应条款结构化成表格，用于逐条核对是否满足、在哪一处响应，方便内部评审和投标合规检查。",
+		q2: "为什么这里只需要上传 RFP？",
+		a2: "该页面只负责从 RFP 中提取必须/应条款，不会分析投标文件本身。你可以在下载的 Excel 里手动填写每一条在方案中的响应位置。",
+		q3: "导出的 Excel 可以怎么用？",
+		a3: "导出的 Excel 包含要求原文、章节号、合规性和备注列，你可以把它作为内部评审 checklist、评审记录或投标项目档案的一部分保存。",
+	},
+	en: {
+		title: "FAQ: RFP Compliance Matrix",
+		q1: "What is a compliance matrix?",
+		a1: "A compliance matrix turns the mandatory 'must/shall' requirements from your RFP into a structured table so you can verify for each line whether you comply and where it is addressed in your proposal.",
+		q2: "Why do I only upload the RFP here?",
+		a2: "This page focuses on extracting mandatory requirements from the RFP itself. You can then use the exported Excel to manually map each requirement to the relevant sections in your proposal.",
+		q3: "How should I use the exported Excel file?",
+		a3: "The Excel file includes requirement text, reference section, compliance (Y/N) and comments columns. You can use it as an internal review checklist or as part of your bid documentation.",
+	},
+} as const;
 
-		// 根据本地存储和浏览器语言选择默认语言
-		useEffect(() => {
-			try {
-				if (typeof window === "undefined") return;
-				const stored = window.localStorage.getItem("cc_lang");
-				if (stored === "zh" || stored === "en") {
-					setLang(stored as Language);
-					return;
-				}
-				const navLang = (navigator.language || navigator.languages?.[0] || "").toLowerCase();
-				setLang(navLang.startsWith("zh") ? "zh" : "en");
-			} catch {
-				setLang("zh");
-			}
-		}, []);
-
-		const handleLanguageChange = (nextLang: Language) => {
-			setLang(nextLang);
-			if (typeof window !== "undefined") {
-				window.localStorage.setItem("cc_lang", nextLang);
-			}
-		};
+export function ComplianceMatrixPage({ lang }: { lang: Language }) {
+			const [file, setFile] = useState<File | null>(null);
+			const [loading, setLoading] = useState(false);
+			const [error, setError] = useState<string>("");
+			const [items, setItems] = useState<ComplianceMatrixItem[]>([]);
+			const [complyMap, setComplyMap] = useState<Record<number, string>>({});
+			const [commentMap, setCommentMap] = useState<Record<number, string>>({});
 
 				const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 				const selected = e.target.files?.[0];
@@ -141,22 +138,23 @@ export default function ComplianceMatrixPage() {
 		setCommentMap((prev) => ({ ...prev, [id]: value }));
 	};
 
+		const faq = faqContent[lang];
+
 	return (
 		<div className="min-h-screen bg-slate-50">
 			<div className="container mx-auto px-4 py-8 space-y-8">
 					{/* 顶部导航：返回首页 + 语言切换 */}
 					<div className="flex items-center justify-between max-w-5xl mx-auto mb-4">
-						<Link
-							href="/"
-							className="flex items-center text-sm text-slate-600 hover:text-blue-600"
-						>
+					<Link
+						href={lang === "zh" ? "/zh" : "/"}
+						className="flex items-center text-sm text-slate-600 hover:text-blue-600"
+					>
 							<span className="mr-1 text-base">←</span>
 							<span>{lang === "zh" ? "返回首页" : "Back to home"}</span>
 						</Link>
 						<div className="inline-flex rounded-full bg-white/60 p-1 shadow-sm border border-slate-200">
-							<button
-								type="button"
-								onClick={() => handleLanguageChange("zh")}
+							<Link
+								href="/zh/compliance-matrix"
 								className={`px-3 py-1 rounded-full text-sm border ${
 									lang === "zh"
 										? "bg-blue-600 text-white border-blue-600"
@@ -164,10 +162,9 @@ export default function ComplianceMatrixPage() {
 								}`}
 							>
 								中文
-							</button>
-							<button
-								type="button"
-								onClick={() => handleLanguageChange("en")}
+							</Link>
+							<Link
+								href="/compliance-matrix"
 								className={`ml-1 px-3 py-1 rounded-full text-sm border ${
 									lang === "en"
 										? "bg-blue-600 text-white border-blue-600"
@@ -175,7 +172,7 @@ export default function ComplianceMatrixPage() {
 								}`}
 							>
 								English
-							</button>
+							</Link>
 						</div>
 					</div>
 
@@ -341,7 +338,36 @@ export default function ComplianceMatrixPage() {
 						</CardContent>
 					</Card>
 				)}
+
+					{/* FAQ Section */}
+					<section className="max-w-5xl mx-auto mt-12 bg-white/80 rounded-2xl shadow-sm border border-slate-200">
+						<div className="px-6 py-6 md:px-8 md:py-8">
+							<h2 className="text-2xl font-semibold text-slate-900 mb-4">
+								{faq.title}
+							</h2>
+							<div className="space-y-6 text-sm md:text-base text-slate-700">
+								<div>
+									<h3 className="font-semibold text-slate-900">{faq.q1}</h3>
+									<p className="mt-1">{faq.a1}</p>
+								</div>
+								<div>
+									<h3 className="font-semibold text-slate-900">{faq.q2}</h3>
+									<p className="mt-1">{faq.a2}</p>
+								</div>
+								<div>
+									<h3 className="font-semibold text-slate-900">{faq.q3}</h3>
+									<p className="mt-1">{faq.a3}</p>
+								</div>
+							</div>
+						</div>
+					</section>
 			</div>
 		</div>
 	);
 }
+	
+	// Default English compliance-matrix page at "/compliance-matrix"
+	export default function Page() {
+		return <ComplianceMatrixPage lang="en" />;
+	}
+	

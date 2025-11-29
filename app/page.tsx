@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Upload, FileText, AlertCircle, CheckCircle2, Loader2, Download, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -182,44 +182,15 @@ function extractCorrectText(suggestion: string): string {
 	  return suggestion;
 	}
 
-export default function HomePage() {
-  const [lang, setLang] = useState<Language>('zh');
-  const [file, setFile] = useState<File | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState<string>('');
-  const [currentPage, setCurrentPage] = useState(1);
-		  const [totalPages, setTotalPages] = useState(0);
-
-  // 根据本地存储和浏览器语言选择默认语言
-  useEffect(() => {
-    try {
-      if (typeof window === 'undefined') return;
-      const stored = window.localStorage.getItem('cc_lang');
-      if (stored === 'zh' || stored === 'en') {
-        setLang(stored);
-        return;
-      }
-      const navLang = (navigator.language || navigator.languages?.[0] || '').toLowerCase();
-      if (navLang.startsWith('zh')) {
-        setLang('zh');
-      } else {
-        setLang('en');
-      }
-    } catch (e) {
-      // 忽略语言检测出错，默认中文
-      setLang('zh');
-    }
-  }, []);
-
-	  const t = translations[lang];
-
-  const handleLanguageChange = (nextLang: Language) => {
-    setLang(nextLang);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('cc_lang', nextLang);
-    }
-  };
+export function HomePage({ lang }: { lang: Language }) {
+	  const [file, setFile] = useState<File | null>(null);
+	  const [analyzing, setAnalyzing] = useState(false);
+	  const [result, setResult] = useState<any>(null);
+	  const [error, setError] = useState<string>('');
+	  const [currentPage, setCurrentPage] = useState(1);
+			  const [totalPages, setTotalPages] = useState(0);
+	
+			  const t = translations[lang];
 
 			  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 	    const selectedFile = e.target.files?.[0];
@@ -319,47 +290,45 @@ export default function HomePage() {
 		            </div>
 		          </div>
 		          <div className="flex items-center gap-6">
-		            <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">
-		              <Link
-		                href="/"
-		                className="hover:text-slate-900 transition-colors"
-		              >
+			            <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">
+			              <Link
+			                href={lang === 'zh' ? '/zh' : '/'}
+			                className="hover:text-slate-900 transition-colors"
+			              >
 		                {lang === 'zh' ? '标书扫描器' : 'Bid Scanner'}
 		              </Link>
-		              <Link
-		                href="/compliance-matrix"
-		                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 transition-colors"
-		              >
+			              <Link
+			                href={lang === 'zh' ? '/zh/compliance-matrix' : '/compliance-matrix'}
+			                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 transition-colors"
+			              >
 		                <span>{lang === 'zh' ? '合规矩阵生成器' : 'Compliance Matrix'}</span>
 		                <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
 		                  NEW
 		                </span>
 		              </Link>
 		            </nav>
-		            <div className="flex justify-center gap-2">
-		              <button
-		                type="button"
-		                onClick={() => handleLanguageChange('zh')}
-		                className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-		                  lang === 'zh'
-		                    ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
-		                    : 'bg-transparent text-slate-600 border-slate-300 hover:border-slate-400'
-		                }`}
-		              >
-		                {t.langSwitchZh}
-		              </button>
-		              <button
-		                type="button"
-		                onClick={() => handleLanguageChange('en')}
-		                className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-		                  lang === 'en'
-		                    ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
-		                    : 'bg-transparent text-slate-600 border-slate-300 hover:border-slate-400'
-		                }`}
-		              >
-		                {t.langSwitchEn}
-		              </button>
-		            </div>
+			            <div className="flex justify-center gap-2">
+			              <Link
+			                href="/zh"
+			                className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+			                  lang === 'zh'
+			                    ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
+			                    : 'bg-transparent text-slate-600 border-slate-300 hover:border-slate-400'
+			                }`}
+			              >
+			                {t.langSwitchZh}
+			              </Link>
+			              <Link
+			                href="/"
+			                className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+			                  lang === 'en'
+			                    ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
+			                    : 'bg-transparent text-slate-600 border-slate-300 hover:border-slate-400'
+			                }`}
+			              >
+			                {t.langSwitchEn}
+			              </Link>
+			            </div>
 		          </div>
 		        </div>
 
@@ -385,10 +354,10 @@ export default function HomePage() {
 		            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs md:text-sm text-slate-700 border border-slate-200">
 		              Pricing consistency &amp; RFP cross-reference
 		            </span>
-		            <Link
-		              href="/compliance-matrix"
-		              className="inline-flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs md:text-sm font-semibold text-white shadow-sm transition-colors"
-		            >
+			            <Link
+			              href={lang === 'zh' ? '/zh/compliance-matrix' : '/compliance-matrix'}
+			              className="inline-flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs md:text-sm font-semibold text-white shadow-sm transition-colors"
+			            >
 		              <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-semibold text-slate-950">
 		                NEW
 		              </span>
@@ -740,4 +709,9 @@ function ErrorSection({
     </Card>
   );
 }
-
+	
+	// Default English page at "/"
+	export default function Page() {
+	  return <HomePage lang="en" />;
+	}
+	

@@ -3,15 +3,23 @@ import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
 	title:
-		"Free AI Compliance Matrix Generator - Extract RFP Requirements to Excel | RFPCheck",
+		"AI Compliance Matrix Generator - Extract RFP Requirements to Excel | RFPAI",
 	description:
-		"Instantly shred RFP documents. Our AI extracts 'Must', 'Shall', and 'Mandatory' requirements into a downloadable Excel compliance matrix.",
+		"Generate a structured compliance matrix from your RFP in seconds. Automatically extract mandatory 'must/shall' requirements into a downloadable Excel checklist.",
 	keywords: [
 		"compliance matrix generator",
 		"RFP shredder",
 		"automated requirements extraction",
 		"bid management tool",
+		"RFP compliance matrix",
 	],
+	alternates: {
+		canonical: "/compliance-matrix",
+		languages: {
+			en: "/compliance-matrix",
+			"zh-Hans": "/zh/compliance-matrix",
+		},
+	},
 };
 
 export default function ComplianceMatrixLayout({

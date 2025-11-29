@@ -6,37 +6,45 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 // 站点正式域名，用于 SEO / OpenGraph / Sitemap 等
-const siteUrl = "https://rfpcheck.net";
+// 按你的要求统一为 rfpai.io
+const siteUrl = "https://rfpai.io";
 
 // Google Analytics 4 测量 ID（来源于 Google Tag 后台）
 const GA_MEASUREMENT_ID = "G-4M4FRSZPJH";
 
 export const metadata: Metadata = {
-			title: "RFPCheck - AI Proposal Compliance Checker & Bid Error Scanner",
-			description:
-				"Automate your bid review. Our AI Cross-Reference Tool scans proposals against RFPs to detect pricing errors, missing requirements, and prevent disqualification.",
-			metadataBase: new URL(siteUrl),
-			openGraph: {
-						title: "RFPCheck - AI Proposal Compliance Checker & Bid Error Scanner",
-						description:
-							"Automate your bid review. Our AI Cross-Reference Tool scans proposals against RFPs to detect pricing errors, missing requirements, and prevent disqualification.",
-								type: "website",
-								url: siteUrl,
-								locale: "zh_CN",
-								siteName: "标书全能王 CrossCheck",
-			},
-			// 关键词标签有助于中文搜索引擎（如百度）理解页面主题
-			keywords: [
-					"标书检查",
-					"标书智能审查",
-					"投标文件检查",
-					"废标风险检测",
-					"招投标文书审核",
-					"标书 AI 工具",
-					"bid proposal checker",
-					"tender document review",
-			],
-		};
+	title: "RFPCheck - AI Automated Compliance & Proposal Analysis",
+	description:
+		"Streamline your RFP process with AI. Automated compliance checks, cross-referencing, and risk analysis.",
+	metadataBase: new URL(siteUrl),
+	openGraph: {
+		title: "RFPCheck - AI Automated Compliance & Proposal Analysis",
+		description:
+			"Streamline your RFP process with AI. Automated compliance checks, cross-referencing, and risk analysis.",
+		type: "website",
+		url: siteUrl,
+		locale: "en_US",
+		siteName: "RFPCheck",
+	},
+	// 关键词标签有助于中文搜索引擎（如百度）理解页面主题
+	keywords: [
+		"标书检查",
+		"标书智能审查",
+		"投标文件检查",
+		"废标风险检测",
+		"招投标文书审核",
+		"标书 AI 工具",
+		"bid proposal checker",
+		"tender document review",
+	],
+	alternates: {
+		canonical: "/",
+		languages: {
+			en: "/",
+			"zh-Hans": "/zh",
+		},
+	},
+};
 
 export default function RootLayout({
   children,
@@ -44,8 +52,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
-	      <body className={`${inter.className} bg-slate-50 text-slate-900`}>
+	    <html lang="en">
+		      <body className={`${inter.className} bg-slate-50 text-slate-900`}>
 	        {/* Google Analytics 4 */}
 	        <Script
 	          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
