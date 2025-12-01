@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
 import { analyzeWithGemini, extractComplianceMatrix } from '@/lib/gemini';
@@ -29,6 +30,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+	    // --- Credit system: require authenticated user and charge credits based on file size ---
+	    const { userId } = await auth();
+	    if (!userId) {
+	      return NextResponse.json(
+	        { error: 'You must be signed in to analyze documents.' },
+	        { status: 401 }
+	      );
+	    }
+
     const fileName = file.name || '';
     const lowerName = fileName.toLowerCase();
     const mimeType = file.type || '';
@@ -58,7 +68,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-	    console.log(`Processing file: ${file.name}, size: ${file.size} bytes, model: ${modelType}, mode: ${mode}`);
+	    // 计算本次调用需要消耗的积分：10 credits / 10MB（向上取整，最少 10 积分）
+	    const totalBytes = file.size;
+	    const sizeInMB = totalBytes / (1024 * 1024);
+	    const blocks = Math.max(1, Math.ceil(sizeInMB / 10));
+	    const cost = blocks * 10;
+
+	    // 读取当前用户积分（从 privateMetadata），不足则返回 402
+	    const clerk = await clerkClient();
+	    const user = await clerk.users.getUser(userId);
+	    const privateMetadata = (user.privateMetadata || {}) as Record<string, any>;
+	    const currentCredits =
+	      typeof privateMetadata.credits === 'number' ? privateMetadata.credits : 0;
+
+	    if (currentCredits < cost) {
+	      return NextResponse.json(
+	        {
+	          error: 'Insufficient credits',
+	          credits: currentCredits,
+	          required: cost,
+	        },
+	        { status: 402 }
+	      );
+	    }
+
+	    const newBalance = currentCredits - cost;
+	    await clerk.users.updateUserMetadata(userId, {
+	      privateMetadata: {
+	        ...privateMetadata,
+	        credits: newBalance,
+	      },
+	      // 同步到 publicMetadata，前端导航可以直接读取并展示余额
+	      publicMetadata: {
+	        ...(user.publicMetadata as Record<string, any>),
+	        credits: newBalance,
+	      },
+	    });
+
+	    console.log(
+	      `Processing file: ${file.name}, size: ${file.size} bytes, model: ${modelType}, mode: ${mode}, cost: ${cost}, remaining_credits: ${newBalance}`
+	    );
 
     // 1. 生成 doc_id
     const docId = crypto.randomUUID();

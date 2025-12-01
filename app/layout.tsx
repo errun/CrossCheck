@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -52,24 +53,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-	    <html lang="en">
-		      <body className={`${inter.className} bg-slate-50 text-slate-900`}>
-	        {/* Google Analytics 4 */}
-	        <Script
-	          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-	          strategy="afterInteractive"
-	        />
-	        <Script id="gtag-init" strategy="afterInteractive">
-	          {`
-	            window.dataLayer = window.dataLayer || [];
-	            function gtag(){dataLayer.push(arguments);}
-	            gtag('js', new Date());
-	            gtag('config', '${GA_MEASUREMENT_ID}');
-	          `}
-	        </Script>
-	        {children}
-	      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body className={`${inter.className} bg-slate-50 text-slate-900`}>
+          {/* Google Analytics 4 */}
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+            strategy="afterInteractive"
+          />
+          <Script id="gtag-init" strategy="afterInteractive">
+            {`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);} 
+              gtag('js', new Date());
+              gtag('config', '${GA_MEASUREMENT_ID}');
+            `}
+          </Script>
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
 

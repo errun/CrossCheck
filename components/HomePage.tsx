@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ErrorItem, Language } from '@/types';
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from '@clerk/nextjs';
 
 const translations: Record<Language, {
   appName: string;
@@ -192,6 +193,8 @@ export function HomePage({ lang }: { lang: Language }) {
 			  const [totalPages, setTotalPages] = useState(0);
 	
 			  const t = translations[lang];
+			  const { user } = useUser();
+			  const credits = (user?.publicMetadata?.credits as number | undefined) ?? null;
 
 			  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 	    const selectedFile = e.target.files?.[0];
@@ -243,20 +246,36 @@ export function HomePage({ lang }: { lang: Language }) {
         });
       }, 100);
 
-      // 调用 API
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        body: formData
-      });
-
-      clearInterval(interval);
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Analysis failed');
-      }
-
-      const data = await res.json();
+	      // 调用 API
+	      const res = await fetch('/api/analyze', {
+	        method: 'POST',
+	        body: formData
+	      });
+	
+	      clearInterval(interval);
+	
+	      if (!res.ok) {
+	        let message = t.defaultErrorMessage;
+	        try {
+	          const errorData = await res.json();
+	          // 专门处理 402：积分不足，给出友好提示
+	          if (res.status === 402) {
+	            const current = errorData?.credits ?? 0;
+	            const required = errorData?.required ?? undefined;
+	            message =
+	              lang === 'zh'
+	                ? `积分不足，本次分析${required ? `需要 ${required} 积分，` : ''}当前余额 ${current}。请充值 / 联系我。`
+	                : `Insufficient credits. This analysis${required ? ` requires ${required} credits,` : ''} you currently have ${current}. Please top up or contact us.`;
+	          } else if (errorData?.error) {
+	            message = errorData.error;
+	          }
+	        } catch {
+	          // ignore JSON parse error, fallback to默认提示
+	        }
+	        throw new Error(message);
+	      }
+	
+	      const data = await res.json();
       setTotalPages(data.total_pages);
       setCurrentPage(data.total_pages);
       setResult(data);
@@ -276,10 +295,10 @@ export function HomePage({ lang }: { lang: Language }) {
     window.open(url, '_blank');
   };
 
-	  return (
-	    <div className="min-h-screen bg-slate-50">
+		  return (
+		    <div className="min-h-screen bg-slate-50">
 		      <div className="max-w-6xl mx-auto px-4 py-6 md:py-10 text-slate-900">
-		        {/* 顶部导航：品牌 + 主功能链接 + 语言切换 */}
+		        {/* 顶部导航：品牌 + 主功能链接 + 语言切换 + 登录 */}
 		        <div className="mb-10 flex items-center justify-between gap-8">
 		          <div className="flex items-center gap-3">
 		            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-lg shadow-sm">
@@ -291,45 +310,65 @@ export function HomePage({ lang }: { lang: Language }) {
 		            </div>
 		          </div>
 		          <div className="flex items-center gap-6">
-			            <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">
-			              <Link
-			                href={lang === 'zh' ? '/zh' : '/'}
-			                className="hover:text-slate-900 transition-colors"
-			              >
+		            <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">
+		              <Link
+		                href={lang === 'zh' ? '/zh' : '/'}
+		                className="hover:text-slate-900 transition-colors"
+		              >
 		                {lang === 'zh' ? '标书扫描器' : 'Bid Scanner'}
 		              </Link>
-			              <Link
-			                href={lang === 'zh' ? '/zh/compliance-matrix' : '/compliance-matrix'}
-			                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 transition-colors"
-			              >
+		              <Link
+		                href={lang === 'zh' ? '/zh/compliance-matrix' : '/compliance-matrix'}
+		                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 transition-colors"
+		              >
 		                <span>{lang === 'zh' ? '合规矩阵生成器' : 'Compliance Matrix'}</span>
 		                <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
 		                  NEW
 		                </span>
 		              </Link>
 		            </nav>
-			            <div className="flex justify-center gap-2">
-			              <Link
-			                href="/zh"
-			                className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-			                  lang === 'zh'
-			                    ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
-			                    : 'bg-transparent text-slate-600 border-slate-300 hover:border-slate-400'
-			                }`}
-			              >
-			                {t.langSwitchZh}
-			              </Link>
-			              <Link
-			                href="/"
-			                className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-			                  lang === 'en'
-			                    ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
-			                    : 'bg-transparent text-slate-600 border-slate-300 hover:border-slate-400'
-			                }`}
-			              >
-			                {t.langSwitchEn}
-			              </Link>
-			            </div>
+			        <div className="flex items-center gap-4">
+		              <div className="flex justify-center gap-2">
+		                <Link
+		                  href="/zh"
+		                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+		                    lang === 'zh'
+		                      ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
+		                      : 'bg-transparent text-slate-600 border-slate-300 hover:border-slate-400'
+		                  }`}
+		                >
+		                  {t.langSwitchZh}
+		                </Link>
+		                <Link
+		                  href="/"
+		                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+		                    lang === 'en'
+		                      ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
+		                      : 'bg-transparent text-slate-600 border-slate-300 hover:border-slate-400'
+		                  }`}
+		                >
+		                  {t.langSwitchEn}
+		                </Link>
+		              </div>
+			              <div className="hidden md:flex items-center gap-3 text-sm">
+			                <SignedOut>
+			                  <div className="flex items-center gap-2">
+			                    <SignInButton mode="modal" />
+			                    <SignUpButton mode="modal" />
+			                  </div>
+			                </SignedOut>
+			                <SignedIn>
+			                  {typeof credits === 'number' && (
+			                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
+			                      {lang === 'zh'
+			                        ? `余额 ${credits} 积分`
+			                        : `${credits} credits`}
+			                    </span>
+			                  )}
+			                  <UserButton afterSignOutUrl="/" />
+			                </SignedIn>
+			              </div>
+		            </div>
 		          </div>
 		        </div>
 
@@ -398,12 +437,38 @@ export function HomePage({ lang }: { lang: Language }) {
                   </label>
                 </div>
                 
-		                {error && (
-		                  <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 flex items-start gap-2">
-		                    <AlertCircle className="h-5 w-5 text-rose-600 mt-0.5" />
-		                    <p className="text-sm text-rose-700">{error}</p>
-		                  </div>
-		                )}
+			        {error && (
+			          <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 flex items-start gap-2">
+			            <AlertCircle className="h-5 w-5 text-rose-600 mt-0.5" />
+			            <div className="text-sm text-rose-700 space-y-2">
+			              <p>{error}</p>
+			              {(error.startsWith('积分不足') || error.startsWith('Insufficient credits')) && (
+			                <>
+			                  <a
+			                    href="mailto:edwin.z.w@qq.com"
+			                    className="inline-block underline underline-offset-2 text-rose-800 hover:text-rose-900"
+			                  >
+			                    {lang === 'zh'
+			                      ? '点击这里给我发邮件：edwin.z.w@qq.com'
+			                      : 'Click here to email me: edwin.z.w@qq.com'}
+			                  </a>
+			                  <div className="pt-1">
+			                    <p className="text-xs mb-1">
+			                      {lang === 'zh'
+			                        ? '也可以微信扫码联系我：'
+			                        : 'Or scan this WeChat QR code to contact me:'}
+			                    </p>
+			                    <img
+			                      src="/wechat-qr.png"
+			                      alt="WeChat QR code"
+			                      className="h-20 w-20 rounded-md border border-rose-200 bg-white"
+			                    />
+			                  </div>
+			                </>
+			              )}
+			            </div>
+			          </div>
+			        )}
 
 		                {/* 仅保留单一模型按钮（Gemini 2.5 Flash） */}
 		                <div className="space-y-3">
