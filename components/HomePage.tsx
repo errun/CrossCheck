@@ -387,27 +387,7 @@ export function HomePage({ lang }: { lang: Language }) {
 		          <p className="text-base md:text-lg font-semibold text-slate-700">
 		            Don&apos;t let a decimal point ruin your month of work.
 		          </p>
-		          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-		            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs md:text-sm text-slate-700 border border-slate-200">
-		              AI proposal analysis
-		            </span>
-		            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs md:text-sm text-slate-700 border border-slate-200">
-		              Pricing consistency &amp; RFP cross-reference
-		            </span>
-			            <Link
-			              href={lang === 'zh' ? '/zh/compliance-matrix' : '/compliance-matrix'}
-			              className="inline-flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs md:text-sm font-semibold text-white shadow-sm transition-colors"
-			            >
-		              <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-semibold text-slate-950">
-		                NEW
-		              </span>
-		              <span>{t.matrixLinkLabel}</span>
-		              <ArrowRight className="h-4 w-4" />
-		            </Link>
-		          </div>
-		          <p className="mt-2 text-xs md:text-sm text-slate-500 max-w-xl">
-		            {t.matrixLinkDesc}
-		          </p>
+          
 		        </header>
 
 	        {/* 上传区 */}
