@@ -192,9 +192,9 @@ export function HomePage({ lang }: { lang: Language }) {
 	  const [currentPage, setCurrentPage] = useState(1);
 			  const [totalPages, setTotalPages] = useState(0);
 	
-			  const t = translations[lang];
-			  const { user } = useUser();
-			  const credits = (user?.publicMetadata?.credits as number | undefined) ?? null;
+				  const t = translations[lang];
+				  const { user } = useUser();
+				  const credits = (user?.privateMetadata?.credits as number | undefined) ?? null;
 
 			  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 	    const selectedFile = e.target.files?.[0];
