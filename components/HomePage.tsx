@@ -420,8 +420,8 @@ export function HomePage({ lang }: { lang: Language }) {
 	              </CardDescription>
             </CardHeader>
 	            <CardContent>
-	              <div className="space-y-4">
-	                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors bg-slate-50">
+              <div className="space-y-4">
+                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors bg-slate-50">
 	                  <input
 	                    type="file"
 			                    accept=".pdf,.doc,.docx"
@@ -436,6 +436,9 @@ export function HomePage({ lang }: { lang: Language }) {
 			                    </p>
                   </label>
                 </div>
+                <p className="text-xs text-slate-500 text-center">
+                  Security First: GDPR Compliant &amp; Data Encryption.
+                </p>
                 
 			        {error && (
 			          <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 flex items-start gap-2">
