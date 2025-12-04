@@ -1,4 +1,5 @@
 import { AIResponse, ComplianceMatrixItem, ErrorItem, Language } from '@/types';
+import { logger } from '@/lib/logger';
 
 /**
  * 调用 Gemini AI 分析标书内容
@@ -18,11 +19,18 @@ export async function analyzeWithGemini(
   const MAX_CHUNK_SIZE = 100000;
 
   if (pdfText.length > MAX_CHUNK_SIZE) {
-    console.log(`Text too long (${pdfText.length} chars), splitting into chunks...`);
+    logger.info('gemini: text too long, splitting into chunks', {
+      textLength: pdfText.length,
+      chunkSize: MAX_CHUNK_SIZE,
+    });
     const chunks = splitIntoChunks(pdfText, MAX_CHUNK_SIZE);
 	    const results = await Promise.all(
 	      chunks.map((chunk, index) => {
-	        console.log(`Processing chunk ${index + 1}/${chunks.length}, lang: ${lang}`);
+	        logger.debug('gemini: processing chunk', {
+	          chunkIndex: index + 1,
+	          totalChunks: chunks.length,
+	          lang,
+	        });
 	        return callGeminiAPI(chunk, apiKey, modelType, lang);
 	      })
 	    );
@@ -95,10 +103,14 @@ export async function extractComplianceMatrix(
 
 	    const data = await response.json();
 	    const aiResponse = data.choices[0].message.content as string;
-	    console.log('Matrix AI Response (first 500 chars):', aiResponse.substring(0, 500));
+	    logger.debug('gemini: matrix AI response preview', {
+	      preview: aiResponse.substring(0, 500),
+	    });
 	    return parseComplianceMatrixResponse(aiResponse);
 	  } catch (error) {
-	    console.error('Compliance matrix API call failed:', error);
+	    logger.error('gemini: compliance matrix API call failed', {
+	      error: (error as Error)?.message,
+	    });
 	    throw error;
 	  }
 }
@@ -123,7 +135,7 @@ async function callGeminiAPI(
   };
 
   const model = modelMap[modelType] || modelMap['default'];
-  console.log(`Using model: ${model}`);
+  logger.info('gemini: using model', { model, modelType, lang });
 
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -158,11 +170,15 @@ async function callGeminiAPI(
 	    const data = await response.json();
     const aiResponse = data.choices[0].message.content;
     
-    console.log('AI Response:', aiResponse.substring(0, 500));
+    logger.debug('gemini: AI response preview', {
+      preview: aiResponse.substring(0, 500),
+    });
     
     return parseAIResponse(aiResponse);
   } catch (error) {
-    console.error('Gemini API call failed:', error);
+    logger.error('gemini: API call failed', {
+      error: (error as Error)?.message,
+    });
     throw error;
   }
 }
@@ -383,11 +399,15 @@ function parseComplianceMatrixResponse(aiResponse: string): { items: ComplianceM
 	      section: String(raw.section || raw.section_id || ''),
 	    }));
 
-	    console.log(`Parsed ${items.length} compliance requirements from AI response`);
+	    logger.info('gemini: parsed compliance requirements', {
+	      count: items.length,
+	    });
 	    return { items };
 	  } catch (e) {
-	    console.error('Compliance matrix parse error:', e);
-	    console.error('Raw matrix response (first 1000 chars):', aiResponse.substring(0, 1000));
+	    logger.error('gemini: compliance matrix parse error', {
+	      error: (e as Error)?.message,
+	      preview: aiResponse.substring(0, 1000),
+	    });
 	    return { items: [] };
 	  }
 }
@@ -425,12 +445,14 @@ function parseAIResponse(aiResponse: string): { errors: ErrorItem[] } {
     // 规范化错误字段并为每个错误生成 UUID
     const errors: ErrorItem[] = parsed.errors.map((err) => normalizeError(err));
 
-    console.log(`Parsed ${errors.length} errors from AI response`);
+    logger.info('gemini: parsed AI errors', { count: errors.length });
 
     return { errors };
   } catch (e) {
-    console.error('AI response parse error:', e);
-    console.error('Raw response (first 1000 chars):', aiResponse.substring(0, 1000));
+    logger.error('gemini: AI response parse error', {
+      error: (e as Error)?.message,
+      preview: aiResponse.substring(0, 1000),
+    });
 
     // 尝试手动提取已有的错误
     try {
@@ -461,12 +483,16 @@ function parseAIResponse(aiResponse: string): { errors: ErrorItem[] } {
         }
 
         if (errorObjects.length > 0) {
-          console.log(`Manually extracted ${errorObjects.length} errors`);
+          logger.warn('gemini: manually extracted errors after parse failure', {
+            count: errorObjects.length,
+          });
           return { errors: errorObjects };
         }
       }
     } catch (extractError) {
-      console.error('Manual extraction failed:', extractError);
+      logger.error('gemini: manual extraction failed', {
+        error: (extractError as Error)?.message,
+      });
     }
 
     // 返回空数组而不是抛出错误
@@ -532,4 +558,3 @@ function splitIntoChunks(text: string, chunkSize: number): string[] {
   
   return chunks;
 }
-

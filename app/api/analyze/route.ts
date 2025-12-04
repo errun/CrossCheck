@@ -4,6 +4,7 @@ import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
 import { analyzeWithGemini, extractComplianceMatrix } from '@/lib/gemini';
 import { cacheManager } from '@/lib/cache';
+import { logger } from '@/lib/logger';
 import { AnalysisResult, Language } from '@/types';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
@@ -15,6 +16,8 @@ import { existsSync } from 'fs';
  * 上传 PDF / Word 并进行分析
  */
 export async function POST(request: NextRequest) {
+  const requestStartedAt = Date.now();
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -24,6 +27,7 @@ export async function POST(request: NextRequest) {
 		    const mode = (formData.get('mode') as string) || 'scan';
 
     if (!file) {
+      logger.warn('analyze: missing file payload');
       return NextResponse.json(
         { error: 'No file provided' },
         { status: 400 }
@@ -33,6 +37,7 @@ export async function POST(request: NextRequest) {
 	    // --- Credit system: require authenticated user and charge credits based on file size ---
 	    const { userId } = await auth();
 	    if (!userId) {
+	      logger.warn('analyze: unauthenticated access');
 	      return NextResponse.json(
 	        { error: 'You must be signed in to analyze documents.' },
 	        { status: 401 }
@@ -53,6 +58,7 @@ export async function POST(request: NextRequest) {
       lowerName.endsWith('.docx');
 
     if (!isPdf && !isDocx) {
+      logger.warn('analyze: unsupported file type', { fileName, mimeType });
       return NextResponse.json(
         { error: 'Only PDF or Word (.docx) files are supported' },
         { status: 400 }
@@ -68,7 +74,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-	    // 计算本次调用需要消耗的积分：10 credits / 10MB（向上取整，最少 10 积分）
+    // 计算本次调用需要消耗的积分：10 credits / 10MB（向上取整，最少 10 积分）
 	    const totalBytes = file.size;
 	    const sizeInMB = totalBytes / (1024 * 1024);
 	    const blocks = Math.max(1, Math.ceil(sizeInMB / 10));
@@ -82,6 +88,12 @@ export async function POST(request: NextRequest) {
 	      typeof privateMetadata.credits === 'number' ? privateMetadata.credits : 0;
 
 	    if (currentCredits < cost) {
+	      logger.warn('analyze: insufficient credits', {
+	        userId,
+	        required: cost,
+	        currentCredits,
+	        fileName,
+	      });
 	      return NextResponse.json(
 	        {
 	          error: 'Insufficient credits',
@@ -105,9 +117,17 @@ export async function POST(request: NextRequest) {
 	      },
 	    });
 
-	    console.log(
-	      `Processing file: ${file.name}, size: ${file.size} bytes, model: ${modelType}, mode: ${mode}, cost: ${cost}, remaining_credits: ${newBalance}`
-	    );
+	    logger.info('analyze: request accepted', {
+	      userId,
+	      fileName,
+	      mimeType,
+	      fileSize: file.size,
+	      lang,
+	      modelType,
+	      mode,
+	      cost,
+	      remainingCredits: newBalance,
+	    });
 
     // 1. 生成 doc_id
     const docId = crypto.randomUUID();
@@ -128,7 +148,7 @@ export async function POST(request: NextRequest) {
     const filePath = join(uploadDir, `${docId}.${ext}`);
     await writeFile(filePath, buffer);
 
-    console.log(`File saved to: ${filePath}`);
+    logger.debug('analyze: file saved', { docId, filePath });
 
     // 3. 解析文本
     let fullText = '';
@@ -138,20 +158,38 @@ export async function POST(request: NextRequest) {
       const pdfData = await pdf(buffer);
       fullText = pdfData.text;
       totalPages = pdfData.numpages;
-      console.log(`PDF parsed: ${totalPages} pages, ${fullText.length} characters`);
+      logger.info('analyze: parsed pdf', {
+        docId,
+        totalPages,
+        textLength: fullText.length,
+      });
     } else if (isDocx) {
       const docxResult = await mammoth.extractRawText({ buffer });
       fullText = docxResult.value || '';
       // Word 无法直接获知页数，这里按字符数粗略估算页数，主要用于进度展示
       totalPages = Math.max(1, Math.round(fullText.length / 1800));
-      console.log(`DOCX parsed: ~${totalPages} pages (estimated), ${fullText.length} characters`);
+      logger.info('analyze: parsed docx', {
+        docId,
+        estimatedPages: totalPages,
+        textLength: fullText.length,
+      });
 	    }
 
 		    // 4. 根据 mode 决定调用哪种 AI 模式
 		    if (mode === 'matrix') {
-		      console.log(`Calling AI for compliance matrix with model: ${modelType}, lang: ${lang}...`);
+		      const aiStart = Date.now();
+		      logger.info('analyze: calling compliance matrix AI', {
+		        docId,
+		        modelType,
+		        lang,
+		        textLength: fullText.length,
+		      });
 		      const matrixResult = await extractComplianceMatrix(fullText, modelType, lang);
-		      console.log(`Compliance matrix completed: ${matrixResult.items.length} requirements found`);
+		      logger.info('analyze: compliance matrix completed', {
+		        docId,
+		        durationMs: Date.now() - aiStart,
+		        requirements: matrixResult.items.length,
+		      });
 		      return NextResponse.json({
 		        doc_id: docId,
 		        total_pages: totalPages,
@@ -160,7 +198,13 @@ export async function POST(request: NextRequest) {
 		    }
 
 		    // 默认 scan 模式：保持现有标书扫描逻辑不变
-		    console.log(`Calling AI for analysis with model: ${modelType}, lang: ${lang}...`);
+		    const aiStart = Date.now();
+		    logger.info('analyze: calling analysis AI', {
+		      docId,
+		      modelType,
+		      lang,
+		      textLength: fullText.length,
+		    });
 		    const aiResult = await analyzeWithGemini(fullText, modelType, lang);
 
 	    // 5. 存入内存缓存
@@ -176,7 +220,11 @@ export async function POST(request: NextRequest) {
 	    
 	    cacheManager.set(docId, result);
 	    
-	    console.log(`Analysis completed: ${aiResult.errors.length} errors found`);
+	    logger.info('analyze: analysis completed', {
+	      docId,
+	      durationMs: Date.now() - aiStart,
+	      errorCount: aiResult.errors.length,
+	    });
 	    
 	    // 5. 返回结果
 	    return NextResponse.json({
@@ -187,7 +235,10 @@ export async function POST(request: NextRequest) {
 	    });
     
   } catch (error: any) {
-    console.error('Analysis error:', error);
+    logger.error('analyze: failed', {
+      error: error?.message,
+      stack: error?.stack,
+    });
     return NextResponse.json(
       { error: error.message || 'Analysis failed' },
       { status: 500 }
@@ -200,10 +251,12 @@ export async function POST(request: NextRequest) {
  * 获取分析结果
  */
 export async function GET(request: NextRequest) {
+  const requestStartedAt = Date.now();
   const searchParams = request.nextUrl.searchParams;
   const docId = searchParams.get('doc_id');
   
   if (!docId) {
+    logger.warn('analyze:get missing doc_id');
     return NextResponse.json(
       { error: 'doc_id is required' },
       { status: 400 }
@@ -213,12 +266,24 @@ export async function GET(request: NextRequest) {
   const result = cacheManager.get(docId);
   
   if (!result) {
+    logger.warn('analyze:get doc not found', { docId });
     return NextResponse.json(
       { error: 'Document not found or expired' },
       { status: 404 }
     );
   }
   
+  logger.debug('analyze:get cache hit', {
+    docId,
+    status: result.status,
+    totalPages: result.total_pages,
+  });
+  logger.info('analyze: request finished', {
+    docId,
+    totalPages: result.total_pages,
+    status: result.status,
+    durationMs: Date.now() - requestStartedAt,
+  });
+
   return NextResponse.json(result);
 }
-

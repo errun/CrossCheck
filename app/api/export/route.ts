@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cacheManager } from '@/lib/cache';
 import { ErrorItem } from '@/types';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/export?doc_id=xxx&format=csv
  * 导出检查清单
  */
 export async function GET(request: NextRequest) {
+  const requestStartedAt = Date.now();
   const searchParams = request.nextUrl.searchParams;
   const docId = searchParams.get('doc_id');
   const format = searchParams.get('format') || 'csv';
   
   if (!docId) {
+    logger.warn('export: missing doc_id');
     return NextResponse.json(
       { error: 'doc_id is required' },
       { status: 400 }
@@ -21,6 +24,7 @@ export async function GET(request: NextRequest) {
   const result = cacheManager.get(docId);
   
   if (!result) {
+    logger.warn('export: doc not found', { docId });
     return NextResponse.json(
       { error: 'Document not found or expired' },
       { status: 404 }
@@ -30,6 +34,12 @@ export async function GET(request: NextRequest) {
   if (format === 'csv') {
     const csv = generateCSV(result.errors);
     
+    logger.info('export: csv generated', {
+      docId,
+      errorCount: result.errors.length,
+      durationMs: Date.now() - requestStartedAt,
+    });
+
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
@@ -38,6 +48,7 @@ export async function GET(request: NextRequest) {
     });
   }
   
+  logger.warn('export: unsupported format', { docId, format });
   return NextResponse.json(
     { error: 'Unsupported format' },
     { status: 400 }
@@ -92,4 +103,3 @@ function generateCSV(errors: ErrorItem[]): string {
 function escapeCSV(text: string): string {
   return text.replace(/"/g, '""');
 }
-
