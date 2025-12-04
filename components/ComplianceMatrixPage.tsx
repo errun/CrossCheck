@@ -155,7 +155,7 @@ export default function ComplianceMatrixPage({
 
 			  const faq = faqContent[lang];
 			  const { user } = useUser();
-			  const credits = (user?.privateMetadata?.credits as number | undefined) ?? null;
+			  const credits = (user?.publicMetadata?.credits as number | undefined) ?? null;
 
 	  return (
 	    <div className="min-h-screen bg-slate-50">
