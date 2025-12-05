@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table";
 import type { ComplianceMatrixItem, Language } from "@/types";
 import { downloadMatrixAsExcel } from "@/lib/exportMatrix";
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser, useClerk } from "@clerk/nextjs";
 
 const faqContent = {
   zh: {
@@ -82,6 +82,12 @@ export default function ComplianceMatrixPage({
 
   const handleGenerate = async () => {
     if (!file) return;
+
+	    // Require sign-in before generating matrix
+	    if (!user) {
+	      openSignIn?.({});
+	      return;
+	    }
 
     setLoading(true);
     setError("");
@@ -153,9 +159,10 @@ export default function ComplianceMatrixPage({
     setCommentMap((prev) => ({ ...prev, [id]: value }));
   };
 
-			  const faq = faqContent[lang];
-			  const { user } = useUser();
-			  const credits = (user?.publicMetadata?.credits as number | undefined) ?? null;
+				  const faq = faqContent[lang];
+				  const { user } = useUser();
+				  const { openSignIn } = useClerk();
+				  const credits = (user?.publicMetadata?.credits as number | undefined) ?? null;
 
 	  return (
 	    <div className="min-h-screen bg-slate-50">
@@ -210,7 +217,19 @@ export default function ComplianceMatrixPage({
 			                <UserButton afterSignOutUrl="/" />
 			              </SignedIn>
 			            </div>
-	          </div>
+			            <div className="flex md:hidden items-center">
+			              <SignedOut>
+			                <SignInButton mode="modal">
+			                  <button className="px-3 py-1 rounded-full text-sm border border-slate-300 bg-white text-slate-700">
+			                    {lang === "zh" ? "登录" : "Sign in"}
+			                  </button>
+			                </SignInButton>
+			              </SignedOut>
+			              <SignedIn>
+			                <UserButton afterSignOutUrl="/" />
+			              </SignedIn>
+			            </div>
+		          </div>
 	        </div>
 
         {/* Hero 区域 */}

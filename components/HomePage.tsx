@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ErrorItem, Language } from '@/types';
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from '@clerk/nextjs';
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser, useClerk } from '@clerk/nextjs';
 
 const translations: Record<Language, {
   appName: string;
@@ -187,14 +187,15 @@ function extractCorrectText(suggestion: string): string {
 export function HomePage({ lang }: { lang: Language }) {
 	  const [file, setFile] = useState<File | null>(null);
 	  const [analyzing, setAnalyzing] = useState(false);
-	  const [result, setResult] = useState<any>(null);
-	  const [error, setError] = useState<string>('');
-	  const [currentPage, setCurrentPage] = useState(1);
-			  const [totalPages, setTotalPages] = useState(0);
-	
-				  const t = translations[lang];
-				  const { user } = useUser();
-				  const credits = (user?.privateMetadata?.credits as number | undefined) ?? null;
+		  const [result, setResult] = useState<any>(null);
+		  const [error, setError] = useState<string>('');
+		  const [currentPage, setCurrentPage] = useState(1);
+				  const [totalPages, setTotalPages] = useState(0);
+			
+					  const t = translations[lang];
+					  const { user } = useUser();
+					  const { openSignIn } = useClerk();
+					  const credits = (user?.privateMetadata?.credits as number | undefined) ?? null;
 
 			  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 	    const selectedFile = e.target.files?.[0];
@@ -218,10 +219,16 @@ export function HomePage({ lang }: { lang: Language }) {
 	    setResult(null);
 			  };
 
-			  const handleAnalyze = async (modelType: 'default' = 'default') => {
-    if (!file) return;
-
-    setAnalyzing(true);
+				  const handleAnalyze = async (modelType: 'default' = 'default') => {
+		    if (!file) return;
+		
+		    // Require sign-in before starting analysis
+		    if (!user) {
+		      openSignIn?.({});
+		      return;
+		    }
+		
+		    setAnalyzing(true);
     setError('');
     setCurrentPage(1);
 
@@ -327,8 +334,8 @@ export function HomePage({ lang }: { lang: Language }) {
 		                </span>
 		              </Link>
 		            </nav>
-			        <div className="flex items-center gap-4">
-		              <div className="flex justify-center gap-2">
+				        <div className="flex items-center gap-4">
+			              <div className="flex justify-center gap-2">
 		                <Link
 		                  href="/zh"
 		                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
@@ -349,25 +356,39 @@ export function HomePage({ lang }: { lang: Language }) {
 		                >
 		                  {t.langSwitchEn}
 		                </Link>
-		              </div>
-			              <div className="hidden md:flex items-center gap-3 text-sm">
-			                <SignedOut>
-			                  <div className="flex items-center gap-2">
-			                    <SignInButton mode="modal" />
-			                    <SignUpButton mode="modal" />
-			                  </div>
-			                </SignedOut>
-			                <SignedIn>
-			                  {typeof credits === 'number' && (
-			                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
-			                      {lang === 'zh'
-			                        ? `余额 ${credits} 积分`
-			                        : `${credits} credits`}
-			                    </span>
-			                  )}
-			                  <UserButton afterSignOutUrl="/" />
-			                </SignedIn>
-			              </div>
+				              </div>
+					              {/* 桌面端：积分 + 登录区 */}
+					              <div className="hidden md:flex items-center gap-3 text-sm">
+					                <SignedOut>
+					                  <div className="flex items-center gap-2">
+					                    <SignInButton mode="modal" />
+					                    <SignUpButton mode="modal" />
+					                  </div>
+					                </SignedOut>
+					                <SignedIn>
+					                  {typeof credits === 'number' && (
+					                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
+					                      {lang === 'zh'
+					                        ? `余额 ${credits} 积分`
+					                        : `${credits} credits`}
+					                    </span>
+					                  )}
+					                  <UserButton afterSignOutUrl="/" />
+					                </SignedIn>
+					              </div>
+					              {/* 手机端：只显示登录按钮或头像 */}
+					              <div className="flex md:hidden items-center">
+					                <SignedOut>
+					                  <SignInButton mode="modal">
+					                    <Button variant="outline" size="sm">
+					                      {lang === 'zh' ? '登录' : 'Sign in'}
+					                    </Button>
+					                  </SignInButton>
+					                </SignedOut>
+					                <SignedIn>
+					                  <UserButton afterSignOutUrl="/" />
+					                </SignedIn>
+					              </div>
 		            </div>
 		          </div>
 		        </div>
