@@ -357,14 +357,22 @@ export function HomePage({ lang }: { lang: Language }) {
 		                  {t.langSwitchEn}
 		                </Link>
 				              </div>
-					              {/* 桌面端：积分 + 登录区 */}
-					              <div className="hidden md:flex items-center gap-3 text-sm">
-					                <SignedOut>
-					                  <div className="flex items-center gap-2">
-					                    <SignInButton mode="modal" />
-					                    <SignUpButton mode="modal" />
-					                  </div>
-					                </SignedOut>
+				      {/* 桌面端：积分 + 登录区 */}
+				      <div className="hidden md:flex items-center gap-3 text-sm">
+				        <SignedOut>
+				          <div className="flex items-center gap-2">
+				            <SignInButton mode="modal">
+				              <Button variant="outline" size="sm">
+				                {lang === 'zh' ? '登录' : 'Sign in'}
+				              </Button>
+				            </SignInButton>
+				            <SignUpButton mode="modal">
+				              <Button variant="outline" size="sm">
+				                {lang === 'zh' ? '注册' : 'Sign up'}
+				              </Button>
+				            </SignUpButton>
+				          </div>
+				        </SignedOut>
 					                <SignedIn>
 					                  {typeof credits === 'number' && (
 					                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
