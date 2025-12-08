@@ -3,6 +3,8 @@ import Script from "next/script";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
+import { cookies } from "next/headers";
+import { zhCN } from "@clerk/localizations";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -48,31 +50,34 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <ClerkProvider>
-      <html lang="en">
-        <body className={`${inter.className} bg-slate-50 text-slate-900`}>
-          {/* Google Analytics 4 */}
-          <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-            strategy="afterInteractive"
-          />
-          <Script id="gtag-init" strategy="afterInteractive">
-            {`
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);} 
-              gtag('js', new Date());
-              gtag('config', '${GA_MEASUREMENT_ID}');
-            `}
-          </Script>
-          {children}
-        </body>
-      </html>
-    </ClerkProvider>
-  );
-}
+	  children,
+	}: Readonly<{
+	  children: React.ReactNode;
+	}>) {
+	  const cookieLang = cookies().get("lang")?.value;
+	  const clerkLocalization = cookieLang === "zh" ? zhCN : undefined;
+
+	  return (
+	    <ClerkProvider localization={clerkLocalization}>
+	      <html lang="en">
+	        <body className={`${inter.className} bg-slate-50 text-slate-900`}>
+	          {/* Google Analytics 4 */}
+	          <Script
+	            src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+	            strategy="afterInteractive"
+	          />
+	          <Script id="gtag-init" strategy="afterInteractive">
+	            {`
+	              window.dataLayer = window.dataLayer || [];
+	              function gtag(){dataLayer.push(arguments);} 
+	              gtag('js', new Date());
+	              gtag('config', '${GA_MEASUREMENT_ID}');
+	            `}
+	          </Script>
+	          {children}
+	        </body>
+	      </html>
+	    </ClerkProvider>
+	  );
+	}
 
