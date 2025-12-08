@@ -194,8 +194,9 @@ export function HomePage({ lang }: { lang: Language }) {
 			
 					  const t = translations[lang];
 					  const { user } = useUser();
+					  const anyUser = user as any;
 					  const { openSignIn } = useClerk();
-					  const credits = (user?.privateMetadata?.credits as number | undefined) ?? null;
+					  const credits = (anyUser?.privateMetadata?.credits as number | undefined) ?? null;
 
 			  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 	    const selectedFile = e.target.files?.[0];

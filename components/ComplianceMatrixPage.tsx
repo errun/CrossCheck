@@ -66,8 +66,9 @@ export default function ComplianceMatrixPage({
   const [commentMap, setCommentMap] = useState<Record<number, string>>({});
 
   const { user } = useUser();
+  const anyUser = user as any;
   const { openSignIn } = useClerk();
-  const credits = (user?.privateMetadata?.credits as number | undefined) ?? null;
+  const credits = (anyUser?.privateMetadata?.credits as number | undefined) ?? null;
 
   const faq = faqContent[lang];
 
