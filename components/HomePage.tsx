@@ -54,10 +54,10 @@ const translations: Record<Language, {
 		  faqQ2: string;
 		  faqA2: string;
 }> = {
-  zh: {
-    appName: '标书全能王',
-	    heroTitle: '自动化标书合规性与错误扫描',
-	    heroSubtitle: 'AI 驱动的标书自动审查与可视化分析',
+	  zh: {
+	    appName: '标书全能王',
+		    heroTitle: '自动化标书合规性与错误扫描',
+		    heroSubtitle: '',
 	    matrixLinkLabel: 'AI 合规矩阵生成器',
 	    matrixLinkDesc: '只需上传 RFP，一键提取必须/应条款并生成 Excel 合规检查表。',
     uploadCardTitle: '上传标书文件',
@@ -101,10 +101,10 @@ const translations: Record<Language, {
 	    faqA2:
 	      '没有任何工具能 100% 保证中标，但通过在提交前自动发现 P1 致命风险和重要合规缺口，它可以大幅降低因低级错误或漏项而导致的废标可能性。',
   },
-  en: {
-    appName: 'CrossCheck',
-	    heroTitle: 'Automated Proposal Compliance & Error Scanner',
-    heroSubtitle: 'AI-powered automatic review and visual analysis for bid proposals',
+	  en: {
+	    appName: 'CrossCheck',
+		    heroTitle: 'Automated Proposal Compliance & Error Scanner',
+	    heroSubtitle: '',
 	    matrixLinkLabel: 'AI Compliance Matrix Generator',
 	    matrixLinkDesc: 'Upload only the RFP to extract mandatory requirements into an Excel compliance checklist.',
     uploadCardTitle: 'Upload Bid Document',
@@ -404,7 +404,7 @@ export function HomePage({ lang }: { lang: Language }) {
 
 		        {/* Hero 区域，参考 Raphael 风格，但采用浅色 B2B SaaS 配色 */}
 		        <header className="mb-12 flex flex-col items-center text-center gap-4">
-		          <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-1 text-xs font-medium text-amber-700 shadow-sm">
+		          <div className="hidden inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-1 text-xs font-medium text-amber-700 shadow-sm">
 		            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
 		            <span>{lang === 'zh' ? ' 标书合规性检查 · 废标风险预防' : 'AI proposal compliance · Disqualification risk guard'}</span>
 		          </div>
