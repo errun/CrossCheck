@@ -3,7 +3,7 @@ import Script from "next/script";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { zhCN } from "@clerk/localizations";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -50,17 +50,20 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({
-	  children,
-	}: Readonly<{
-	  children: React.ReactNode;
-	}>) {
-	  const cookieLang = cookies().get("lang")?.value;
-	  const clerkLocalization = cookieLang === "zh" ? zhCN : undefined;
+		  children,
+		}: Readonly<{
+		  children: React.ReactNode;
+		}>) {
+		  const requestHeaders = headers();
+		  const headerLang = requestHeaders.get("x-app-lang");
+		  const cookieLang = cookies().get("lang")?.value;
+		  const effectiveLang = headerLang || cookieLang;
+		  const clerkLocalization = effectiveLang === "zh" ? zhCN : undefined;
 
-	  return (
-	    <ClerkProvider localization={clerkLocalization}>
-	      <html lang="en">
-	        <body className={`${inter.className} bg-slate-50 text-slate-900`}>
+		  return (
+		    <ClerkProvider localization={clerkLocalization}>
+		      <html lang="en">
+		        <body className={`${inter.className} bg-slate-50 text-slate-900`}>
 	          {/* Google Analytics 4 */}
 	          <Script
 	            src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}

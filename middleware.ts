@@ -48,7 +48,9 @@ export default clerkMiddleware((auth, req) => {
 	// 第一层：如果用户访问了明确的 /zh 前缀，则记住偏好为 zh
 	if (isZhPath && langCookie !== "zh") {
 		console.log("[middleware-lang] set lang=zh", { pathname, country, prevLang: langCookie });
-		const res = NextResponse.next();
+			const requestHeaders = new Headers(req.headers);
+			requestHeaders.set("x-app-lang", "zh");
+			const res = NextResponse.next({ request: { headers: requestHeaders } });
 		res.cookies.set("lang", "zh", { path: "/", maxAge: 60 * 60 * 24 * 365 });
 		return res;
 	}
@@ -72,7 +74,9 @@ export default clerkMiddleware((auth, req) => {
 	// 第三层：英文入口路径下，记录英文偏好
 	if (isEnglishRoot && langCookie !== "en") {
 		console.log("[middleware-lang] set lang=en", { pathname, country, prevLang: langCookie });
-		const res = NextResponse.next();
+			const requestHeaders = new Headers(req.headers);
+			requestHeaders.set("x-app-lang", "en");
+			const res = NextResponse.next({ request: { headers: requestHeaders } });
 		res.cookies.set("lang", "en", { path: "/", maxAge: 60 * 60 * 24 * 365 });
 		return res;
 	}
