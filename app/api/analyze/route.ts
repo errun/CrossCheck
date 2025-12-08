@@ -74,18 +74,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 计算本次调用需要消耗的积分：10 credits / 10MB（向上取整，最少 10 积分）
-	    const totalBytes = file.size;
-	    const sizeInMB = totalBytes / (1024 * 1024);
-	    const blocks = Math.max(1, Math.ceil(sizeInMB / 10));
-	    const cost = blocks * 10;
-
-	    // 读取当前用户积分（从 privateMetadata），不足则返回 402
-	    const clerk = await clerkClient();
-	    const user = await clerk.users.getUser(userId);
-	    const privateMetadata = (user.privateMetadata || {}) as Record<string, any>;
-	    const currentCredits =
-	      typeof privateMetadata.credits === 'number' ? privateMetadata.credits : 0;
+		    // 计算本次调用需要消耗的积分：10 credits / 10MB（向上取整，最少 10 积分）
+			    const totalBytes = file.size;
+			    const sizeInMB = totalBytes / (1024 * 1024);
+			    const blocks = Math.max(1, Math.ceil(sizeInMB / 10));
+			    const cost = blocks * 10;
+		
+			    // 读取当前用户积分（从 privateMetadata），不足则返回 402
+			    const clerk = await clerkClient();
+			    const user = await clerk.users.getUser(userId);
+			    const privateMetadata = (user.privateMetadata || {}) as Record<string, any>;
+			    // 如果用户还没有 credits 字段（新注册，webhook 可能尚未生效），默认给一部分初始积分
+			    const DEFAULT_INITIAL_CREDITS = 200;
+			    const currentCredits =
+			      typeof privateMetadata.credits === 'number'
+			        ? privateMetadata.credits
+			        : DEFAULT_INITIAL_CREDITS;
 
 	    if (currentCredits < cost) {
 	      logger.warn('analyze: insufficient credits', {

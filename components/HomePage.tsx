@@ -420,85 +420,130 @@ export function HomePage({ lang }: { lang: Language }) {
           
 		        </header>
 
-	        {/* 上传区 */}
-		        {!analyzing && !result && (
-	          <Card className="max-w-2xl mx-auto bg-white border-slate-200 shadow-sm rounded-xl">
-            <CardHeader>
-	              <CardTitle>{t.uploadCardTitle}</CardTitle>
-	              <CardDescription>
-			            {t.uploadCardDesc}
-	              </CardDescription>
-            </CardHeader>
-	            <CardContent>
-              <div className="space-y-4">
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors bg-slate-50">
-	                  <input
-	                    type="file"
-			                    accept=".pdf,.doc,.docx"
-	                    onChange={handleFileChange}
-	                    className="hidden"
-	                    id="file-upload"
-	                  />
-		                  <label htmlFor="file-upload" className="cursor-pointer">
-	                    <FileText className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-		                    <p className="text-sm text-slate-600">
-			                      {file ? file.name : t.uploadPlaceholder}
-			                    </p>
-                  </label>
-                </div>
-                <p className="text-xs text-slate-500 text-center">
-                  Security First: GDPR Compliant &amp; Data Encryption.
-                </p>
-                
-			        {error && (
-			          <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 flex items-start gap-2">
-			            <AlertCircle className="h-5 w-5 text-rose-600 mt-0.5" />
-			            <div className="text-sm text-rose-700 space-y-2">
-			              <p>{error}</p>
-			              {(error.startsWith('积分不足') || error.startsWith('Insufficient credits')) && (
-			                <>
-			                  <a
-			                    href="mailto:edwin.z.w@qq.com"
-			                    className="inline-block underline underline-offset-2 text-rose-800 hover:text-rose-900"
-			                  >
-			                    {lang === 'zh'
-			                      ? '点击这里给我发邮件：edwin.z.w@qq.com'
-			                      : 'Click here to email me: edwin.z.w@qq.com'}
-			                  </a>
-			                  <div className="pt-1">
-			                    <p className="text-xs mb-1">
-			                      {lang === 'zh'
-			                        ? '也可以微信扫码联系我：'
-			                        : 'Or scan this WeChat QR code to contact me:'}
-			                    </p>
-			                    <img
-			                      src="/wechat-qr.png"
-			                      alt="WeChat QR code"
-			                      className="h-20 w-20 rounded-md border border-rose-200 bg-white"
-			                    />
+	      {/* 上传区 + 合规矩阵入口 */}
+	        {!analyzing && !result && (
+	          <div className="max-w-2xl mx-auto space-y-4">
+	            {/* 标书扫描器上传卡片 */}
+	            <Card className="bg-white border-slate-200 shadow-sm rounded-xl">
+	              <CardHeader>
+	                <CardTitle>{t.uploadCardTitle}</CardTitle>
+	                <CardDescription>
+		              {t.uploadCardDesc}
+	                </CardDescription>
+	              </CardHeader>
+	              <CardContent>
+		            <div className="space-y-4">
+		              <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors bg-slate-50">
+			                <input
+			                  type="file"
+				                      accept=".pdf,.doc,.docx"
+			                  onChange={handleFileChange}
+			                  className="hidden"
+			                  id="file-upload"
+			                />
+			                    <label htmlFor="file-upload" className="cursor-pointer">
+			                  <FileText className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+				                      <p className="text-sm text-slate-600">
+					                        {file ? file.name : t.uploadPlaceholder}
+					                      </p>
+			                    </label>
 			                  </div>
-			                </>
-			              )}
-			            </div>
-			          </div>
-			        )}
+			                  <p className="text-xs text-slate-500 text-center">
+			                    Security First: GDPR Compliant &amp; Data Encryption.
+			                  </p>
+			                  
+				          {error && (
+				            <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 flex items-start gap-2">
+					              <AlertCircle className="h-5 w-5 text-rose-600 mt-0.5" />
+					              <div className="text-sm text-rose-700 space-y-2">
+					                <p>{error}</p>
+					                {(error.startsWith('积分不足') || error.startsWith('Insufficient credits')) && (
+					                  <>
+					                    <a
+						                      href="mailto:edwin.z.w@qq.com"
+						                      className="inline-block underline underline-offset-2 text-rose-800 hover:text-rose-900"
+						                    >
+						                      {lang === 'zh'
+						                        ? '点击这里给我发邮件：edwin.z.w@qq.com'
+						                        : 'Click here to email me: edwin.z.w@qq.com'}
+						                    </a>
+						                    <div className="pt-1">
+						                      <p className="text-xs mb-1">
+						                        {lang === 'zh'
+						                          ? '也可以微信扫码联系我：'
+						                          : 'Or scan this WeChat QR code to contact me:'}
+						                      </p>
+						                      <img
+						                        src="/wechat-qr.png"
+						                        alt="WeChat QR code"
+						                        className="h-20 w-20 rounded-md border border-rose-200 bg-white"
+						                      />
+						                    </div>
+						                  </>
+						                )}
+					              </div>
+					            </div>
+				          )}
+			
+			                  {/* 仅保留单一模型按钮（Gemini 2.5 Flash） */}
+			                  <div className="space-y-3">
+			                    <Button
+			                      onClick={() => handleAnalyze('default')}
+			                      disabled={!file}
+			                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+			                      size="lg"
+			                    >
+			                      <Upload className="mr-2 h-5 w-5" />
+			                      {t.analyzeButton}
+			                    </Button>
+			                  </div>
+			              </div>
+		              </CardContent>
+		            </Card>
 
-		                {/* 仅保留单一模型按钮（Gemini 2.5 Flash） */}
-		                <div className="space-y-3">
-		                  <Button
-		                    onClick={() => handleAnalyze('default')}
-		                    disabled={!file}
-		                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-		                    size="lg"
+		            {/* 合规矩阵生成器功能入口，和标书扫描器一起在首页展示 */}
+		            <Card className="bg-slate-900 text-white border-slate-800 shadow-sm rounded-xl">
+		              <CardHeader>
+		                {/* 标题字号与上方“上传标书文件”等 CardTitle 保持一致 */}
+		                <CardTitle className="flex items-center gap-2">
+		                  <span>{t.matrixLinkLabel}</span>
+		                  <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+		                    NEW
+		                  </span>
+		                </CardTitle>
+		                <CardDescription className="text-slate-200">
+		                  {t.matrixLinkDesc}
+		                </CardDescription>
+		              </CardHeader>
+		              <CardContent>
+		                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+		                  <p className="text-xs text-slate-300">
+		                    {lang === 'zh'
+		                      ? '只上传 RFP，几秒钟生成 Excel 合规检查表，便于内部评审和投标控标。'
+		                      : 'Upload only the RFP and generate an Excel compliance checklist in seconds for internal review and bid management.'}
+		                  </p>
+		                  <Link
+		                    href={lang === 'zh' ? '/zh/compliance-matrix' : '/compliance-matrix'}
+		                    className="inline-flex"
 		                  >
-		                    <Upload className="mr-2 h-5 w-5" />
-		                    {t.analyzeButton}
-		                  </Button>
+		                    <Button
+		                      variant="secondary"
+		                      size="sm"
+		                      className="inline-flex items-center gap-1"
+		                    >
+		                      <span>
+		                        {lang === 'zh'
+		                          ? '前往合规矩阵生成器'
+		                          : 'Open Compliance Matrix'}
+		                      </span>
+		                      <ArrowRight className="h-4 w-4" />
+		                    </Button>
+		                  </Link>
 		                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+		              </CardContent>
+		            </Card>
+		          </div>
+	        )}
 
 	        {/* 分析中 */}
 		        {analyzing && (

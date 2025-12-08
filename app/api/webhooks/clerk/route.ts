@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       const existingPrivate = (payload.data.private_metadata || {}) as Record<string, any>;
       const existingPublic = (payload.data.public_metadata || {}) as Record<string, any>;
 
-      const initialCredits = 50;
+	      const initialCredits = 200;
 
       await clerk.users.updateUserMetadata(userId, {
         privateMetadata: {
