@@ -58,9 +58,11 @@ const translations: Record<Language, {
 	    appName: '标书全能王',
 		    heroTitle: '自动化标书合规性与错误扫描',
 		    heroSubtitle: '',
-	    matrixLinkLabel: 'AI 合规矩阵生成器',
-	    matrixLinkDesc: '只需上传 RFP，一键提取必须/应条款并生成 Excel 合规检查表。',
-    uploadCardTitle: '上传标书文件',
+	    // 首页第二个功能卡片：招标文件提取
+	    matrixLinkLabel: '招标文件提取',
+	    matrixLinkDesc: '只需上传文档，一键提取必须/应条款并生成 Excel 合规检查表。',
+	    // 首页第一个功能卡片：投标文件检查
+	    uploadCardTitle: '投标文件检查',
     uploadCardDesc: '支持 PDF / Word(.docx) 格式，最大 50MB',
     uploadPlaceholder: '点击选择 PDF / Word 文件',
     analyzeButton: '标书分析',
@@ -516,12 +518,7 @@ export function HomePage({ lang }: { lang: Language }) {
 		                </CardDescription>
 		              </CardHeader>
 		              <CardContent>
-		                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-		                  <p className="text-xs text-slate-300">
-		                    {lang === 'zh'
-		                      ? '只上传 RFP，几秒钟生成 Excel 合规检查表，便于内部评审和投标控标。'
-		                      : 'Upload only the RFP and generate an Excel compliance checklist in seconds for internal review and bid management.'}
-		                  </p>
+		                <div className="flex justify-end">
 		                  <Link
 		                    href={lang === 'zh' ? '/zh/compliance-matrix' : '/compliance-matrix'}
 		                    className="inline-flex"
@@ -533,7 +530,7 @@ export function HomePage({ lang }: { lang: Language }) {
 		                    >
 		                      <span>
 		                        {lang === 'zh'
-		                          ? '前往合规矩阵生成器'
+		                          ? '前往招标文件提取'
 		                          : 'Open Compliance Matrix'}
 		                      </span>
 		                      <ArrowRight className="h-4 w-4" />
