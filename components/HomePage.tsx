@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Upload, FileText, AlertCircle, CheckCircle2, Loader2, Download, ArrowRight } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle2, Loader2, Download, ArrowRight, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -537,6 +537,34 @@ export function HomePage({ lang }: { lang: Language }) {
 		                    </Button>
 		                  </Link>
 		                </div>
+		              </CardContent>
+		            </Card>
+
+		            {/* Font Compliance Checker 热点入口（红色渐变小卡片） */}
+		            <Card className="bg-gradient-to-r from-rose-600 via-orange-500 to-amber-400 text-white border-none shadow-md rounded-xl">
+		              <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+		                <div className="flex items-start gap-3">
+		                  <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide">
+		                    <Flame className="h-4 w-4" />
+		                    <span>HOT</span>
+		                  </div>
+		                  <div className="text-sm md:text-base">
+		                    <p className="font-semibold">Font Wars: Is Your Document Government-Approved?</p>
+		                    <p className="text-xs md:text-sm text-amber-50/90">
+		                      Is your font too woke? Check compliance after Rubio banned Calibri.
+		                    </p>
+		                  </div>
+		                </div>
+		                <Link href="/font-checker" className="inline-flex">
+		                  <Button
+		                    variant="secondary"
+		                    size="sm"
+		                    className="inline-flex items-center gap-1 bg-white/90 text-rose-700 hover:bg-white"
+		                  >
+		                    <span>Check My Document Now</span>
+		                    <ArrowRight className="h-4 w-4" />
+		                  </Button>
+		                </Link>
 		              </CardContent>
 		            </Card>
 		          </div>
