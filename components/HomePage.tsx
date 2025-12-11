@@ -256,34 +256,43 @@ export function HomePage({ lang }: { lang: Language }) {
         });
       }, 100);
 
-	      // 调用 API
-	      const res = await fetch('/api/analyze', {
-	        method: 'POST',
-	        body: formData
-	      });
-	
-	      clearInterval(interval);
-	
-	      if (!res.ok) {
-	        let message = t.defaultErrorMessage;
-	        try {
-	          const errorData = await res.json();
-	          // 专门处理 402：积分不足，给出友好提示
-	          if (res.status === 402) {
-	            const current = errorData?.credits ?? 0;
-	            const required = errorData?.required ?? undefined;
-	            message =
-	              lang === 'zh'
-	                ? `积分不足，本次分析${required ? `需要 ${required} 积分，` : ''}当前余额 ${current}。请充值 / 联系我。`
-	                : `Insufficient credits. This analysis${required ? ` requires ${required} credits,` : ''} you currently have ${current}. Please top up or contact us.`;
-	          } else if (errorData?.error) {
-	            message = errorData.error;
-	          }
-	        } catch {
-	          // ignore JSON parse error, fallback to默认提示
-	        }
-	        throw new Error(message);
-	      }
+		      // 调用 API
+		      const res = await fetch('/api/analyze', {
+		        method: 'POST',
+		        body: formData
+		      });
+			
+		      clearInterval(interval);
+			
+		      if (!res.ok) {
+		        let message = t.defaultErrorMessage;
+		
+		        // 413：文件体积超过 Next/代理的上传上限，给出明确提示
+		        if (res.status === 413) {
+		          message =
+		            lang === 'zh'
+		              ? '文件太大，超过当前在线版本的上传大小上限。建议控制在 50MB 以内，或拆分为多个文件后再上传。'
+		              : 'File is too large for the current online version. Please keep it under 50MB or split it into multiple documents.';
+		        } else {
+		          try {
+		            const errorData = await res.json();
+		            // 专门处理 402：积分不足，给出友好提示
+		            if (res.status === 402) {
+		              const current = errorData?.credits ?? 0;
+		              const required = errorData?.required ?? undefined;
+		              message =
+		                lang === 'zh'
+		                  ? `积分不足，本次分析${required ? `需要 ${required} 积分，` : ''}当前余额 ${current}。请充值 / 联系我。`
+		                  : `Insufficient credits. This analysis${required ? ` requires ${required} credits,` : ''} you currently have ${current}. Please top up or contact us.`;
+		            } else if (errorData?.error) {
+		              message = errorData.error;
+		            }
+		          } catch {
+		            // ignore JSON parse error, fallback to 默认提示
+		          }
+		        }
+		        throw new Error(message);
+		      }
 	
 	      const data = await res.json();
       setTotalPages(data.total_pages);
