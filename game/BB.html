@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抽炸弹游戏 | Bomb Game | เกมส์ลุ้นระเบิด</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f9f0f5;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            text-align: center;
+        }
+        .lang-switch {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .lang-btn {
+            padding: 8px 16px;
+            border: 2px solid #ff99cc;
+            border-radius: 20px;
+            background-color: #fff;
+            color: #ff6699;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .lang-btn.active {
+            background-color: #ff6699;
+            color: #fff;
+        }
+        h1 {
+            color: #ff6699;
+            margin-bottom: 30px;
+        }
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(3, 120px);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .num-btn {
+            width: 120px;
+            height: 120px;
+            font-size: 36px;
+            border: none;
+            border-radius: 20px;
+            background-color: #ffccdd;
+            color: #ff3366;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(255, 102, 153, 0.2);
+        }
+        .num-btn:hover {
+            background-color: #ff99bb;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(255, 102, 153, 0.3);
+        }
+        .num-btn:disabled {
+            background-color: #e6e6e6;
+            color: #999;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .num-btn.bomb {
+            background-color: #ff4466;
+            color: #fff;
+        }
+        #result {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 20px;
+            height: 30px;
+        }
+        #reset-btn {
+            padding: 10px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 20px;
+            background-color: #ff6699;
+            color: #fff;
+            cursor: pointer;
+            margin-top: 10px;
+            display: none;
+            box-shadow: 0 4px 8px rgba(255, 102, 153, 0.2);
+        }
+        #reset-btn:hover {
+            background-color: #ff3366;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="lang-switch">
+            <button class="lang-btn active" data-lang="zh">中文</button>
+            <button class="lang-btn" data-lang="en">English</button>
+            <button class="lang-btn" data-lang="th">ภาษาไทย</button>
+        </div>
+        <h1 id="game-title">6数字抽炸弹</h1>
+        <div class="btn-group" id="btnGroup">
+            <!-- 按钮由JS动态生成 -->
+        </div>
+        <div id="result"></div>
+        <button id="reset-btn">重新开始</button>
+    </div>
+
+    <script>
+        // 多语言文本配置
+        const langTexts = {
+            zh: {
+                title: "6数字抽炸弹",
+                result: "游戏结束！你抽到了炸弹！",
+                reset: "重新开始"
+            },
+            en: {
+                title: "6 Number Bomb Game",
+                result: "Game Over! You got the bomb!",
+                reset: "Play Again"
+            },
+            th: {
+                title: "เกมส์ลุ้นระเบิด 6 ตัวเลข",
+                result: "เกมจบ! คุณได้รับระเบิด!",
+                reset: "เล่นอีกครั้ง"
+            }
+        };
+
+        const btnGroup = document.getElementById('btnGroup');
+        const result = document.getElementById('result');
+        const resetBtn = document.getElementById('reset-btn');
+        const gameTitle = document.getElementById('game-title');
+        const langBtns = document.querySelectorAll('.lang-btn');
+        let currentLang = 'zh';
+        let bombIndex = -1;
+        let isGameOver = false;
+
+        // 初始化游戏
+        function initGame() {
+            btnGroup.innerHTML = '';
+            result.textContent = '';
+            resetBtn.style.display = 'none';
+            isGameOver = false;
+            // 随机生成炸弹位置 (0-5)
+            bombIndex = Math.floor(Math.random() * 6);
+            // 生成数字按钮
+            for (let i = 1; i <= 6; i++) {
+                const button = document.createElement('button');
+                button.className = 'num-btn';
+                button.textContent = i;
+                button.dataset.index = i - 1;
+                button.onclick = () => clickBtn(button);
+                btnGroup.appendChild(button);
+            }
+            // 更新语言文本
+            updateLangText();
+        }
+
+        // 点击数字按钮事件
+        function clickBtn(btn) {
+            if (isGameOver) return;
+            const index = parseInt(btn.dataset.index);
+            btn.disabled = true;
+            if (index === bombIndex) {
+                // 可爱炸弹样式
+                btn.textContent = '🧨';
+                btn.classList.add('bomb');
+                result.textContent = langTexts[currentLang].result;
+                result.style.color = '#ff3366';
+                isGameOver = true;
+                // 禁用所有按钮
+                document.querySelectorAll('.num-btn').forEach(btn => btn.disabled = true);
+                resetBtn.style.display = 'block';
+            } else {
+                // 可爱对勾
+                btn.textContent = '✧٩(ˊωˋ*)و✧';
+            }
+        }
+
+        // 更新语言相关文本
+        function updateLangText() {
+            gameTitle.textContent = langTexts[currentLang].title;
+            resetBtn.textContent = langTexts[currentLang].reset;
+        }
+
+        // 语言切换事件
+        langBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                langBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentLang = btn.dataset.lang;
+                initGame();
+            });
+        });
+
+        // 重新开始按钮事件
+        resetBtn.onclick = initGame;
+
+        // 页面加载初始化
+        window.onload = initGame;
+    </script>
+</body>
+</html>

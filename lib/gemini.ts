@@ -1,4 +1,4 @@
-import { AIResponse, ComplianceMatrixItem, ErrorItem, Language } from '@/types';
+import { AIResponse, BidComparisonItem, BidComparisonSummary, ComplianceMatrixItem, ErrorItem, Language } from '@/types';
 import { logger } from '@/lib/logger';
 
 /**
@@ -114,6 +114,76 @@ export async function extractComplianceMatrix(
 	    throw error;
 	  }
 }
+
+		/**
+		 * 根据 RFP 提取的合规矩阵 + 投标文件全文，生成覆盖情况对比
+		 */
+	export async function compareRfpAndBid(
+		requirements: ComplianceMatrixItem[],
+		bidText: string,
+		modelType: string = 'default',
+		lang: Language = 'zh',
+	): Promise<{ items: BidComparisonItem[]; summary: BidComparisonSummary }> {
+		const apiKey = process.env.OPENROUTER_API_KEY;
+
+		if (!apiKey) {
+			throw new Error('OPENROUTER_API_KEY is not configured');
+		}
+
+		const MAX_BID_CHARS = 80000;
+		const truncatedBid = bidText.substring(0, MAX_BID_CHARS);
+		const prompt = buildBidComparePrompt(requirements, truncatedBid, lang);
+
+		// 与其他功能共用模型映射
+		const modelMap: Record<string, string> = {
+			default: 'google/gemini-2.5-flash',
+			gpt5: 'openai/gpt-5',
+			gemini3: 'google/gemini-3-pro-preview',
+			claude35: 'anthropic/claude-3.5-sonnet',
+		};
+		const model = modelMap[modelType] || modelMap.default;
+
+		try {
+			const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${apiKey}`,
+					// Header 只能为 ASCII
+					'HTTP-Referer': 'https://rfpai.io',
+					'X-Title': 'CrossCheck RFP vs Bid Comparator',
+				},
+				body: JSON.stringify({
+					model,
+					messages: [
+						{
+							role: 'user',
+							content: prompt,
+						},
+					],
+					temperature: 0.2,
+					max_tokens: 6000,
+				}),
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(`OpenRouter API error (bid-compare): ${response.status} - ${errorText}`);
+			}
+
+			const data = await response.json();
+			const aiResponse = data.choices[0].message.content as string;
+			logger.debug('gemini: bid-compare AI response preview', {
+				preview: aiResponse.substring(0, 500),
+			});
+			return parseBidCompareResponse(aiResponse, requirements);
+		} catch (error) {
+			logger.error('gemini: bid-compare API call failed', {
+				error: (error as Error)?.message,
+			});
+			throw error;
+		}
+	}
 
 /**
  * 调用 OpenRouter API (Gemini)
@@ -366,51 +436,377 @@ ${rfpText}
 ----- END RFP TEXT -----`;
 }
 
+	/**
+	 * 构建 RFP 要求 vs 投标文件对比 Prompt
+	 */
+	function buildBidComparePrompt(
+		requirements: ComplianceMatrixItem[],
+		bidText: string,
+		lang: Language,
+	): string {
+		const requirementsJson = JSON.stringify(
+			requirements.map((r) => ({
+				id: r.id,
+				text: r.text,
+				page: r.page,
+				section: r.section,
+			})),
+			null,
+			2,
+		);
+
+		if (lang === 'en') {
+			return `You are an expert bid consultant.
+
+You are given:
+1) A list of mandatory RFP requirements (JSON array below).
+2) The full text of a bid/proposal document.
+
+For each requirement, decide whether the bid **fully covers**, **partially covers**, or **does not cover** the requirement.
+
+### Output format (MUST be valid JSON, no extra commentary)
+Return a JSON object like:
+\`\`\`json
+{
+  "items": [
+    {
+      "id": 1,
+      "requirement_id": 1,
+      "requirement_text": "The bidder shall provide ...",
+      "status": "covered", // one of: covered, partially_covered, missing
+      "evidence": "Short quote or description of where it is addressed in the bid",
+      "comment": "Any short explanation or risk note"
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "covered": 6,
+    "partially_covered": 2,
+    "missing": 2
+  }
+}
+\`\`\`
+
+Rules:
+1. If the bid clearly and fully satisfies the requirement, use status = "covered".
+2. If the bid mentions it but in an incomplete or weak way, use status = "partially_covered".
+3. If you cannot find any relevant content, use status = "missing" and set evidence to "not found".
+4. evidence should be short (<= 200 characters) and concrete.
+5. summary counts must be consistent with items.
+
+### RFP mandatory requirements (JSON array)
+${requirementsJson}
+
+### Bid / proposal full text (truncated)
+${bidText}`;
+		}
+
+		// 中文 Prompt
+		return `你是一名资深招投标顾问。
+
+你将拿到：
+1）一份从招标文件（RFP）中提取出来的【强制性要求列表】（下面的 JSON 数组）；
+2）一份投标文件的全文内容。
+
+请针对每一条 RFP 要求，判断投标文件是：**完全覆盖**、**部分覆盖**，还是**未覆盖**。
+
+### 输出格式（必须是合法 JSON，不要额外解释）
+请严格返回如下结构：
+\`\`\`json
+{
+  "items": [
+    {
+      "id": 1,
+      "requirement_id": 1,
+      "requirement_text": "投标人应当提供不少于三份近三年的类似业绩证明……",
+      "status": "covered", // covered / partially_covered / missing 三选一
+      "evidence": "简要说明在投标文件哪里体现了该要求，可包含少量引用文本",
+      "comment": "补充说明或风险提示"
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "covered": 6,
+    "partially_covered": 2,
+    "missing": 2
+  }
+}
+\`\`\`
+
+规则：
+1. 如果投标文件中对该要求有清晰且充分的响应，status = "covered"；
+2. 如果有提到但不够完整、存在缺口或表述较弱，status = "partially_covered"；
+3. 如果基本找不到相关内容，status = "missing"，并将 evidence 设为 "not found" 或类似说明；
+4. evidence 需尽量简短（不超过 200 字），但要具体；
+5. summary 中的各项计数必须与 items 一致。
+
+### 招标文件强制性要求列表（JSON 数组）
+${requirementsJson}
+
+### 投标文件全文（已截断）
+${bidText}`;
+	}
+
 /**
 	 * 解析 AI 返回的合规矩阵 JSON
 	 */
 function parseComplianceMatrixResponse(aiResponse: string): { items: ComplianceMatrixItem[] } {
-	  try {
-	    let jsonStr = aiResponse.trim();
+		  try {
+		    let jsonStr = aiResponse.trim();
 
-	    // 移除 markdown 代码块标记
-	    if (jsonStr.startsWith('```json')) {
-	      jsonStr = jsonStr.replace(/```json\s*/i, '').replace(/```\s*$/i, '');
-	    } else if (jsonStr.startsWith('```')) {
-	      jsonStr = jsonStr.replace(/```\s*/i, '').replace(/```\s*$/i, '');
-	    }
+		    // 移除 markdown 代码块标记
+		    if (jsonStr.startsWith('```json')) {
+		      jsonStr = jsonStr.replace(/```json\s*/i, '').replace(/```\s*$/i, '');
+		    } else if (jsonStr.startsWith('```')) {
+		      jsonStr = jsonStr.replace(/```\s*/i, '').replace(/```\s*$/i, '');
+		    }
 
-	    jsonStr = jsonStr.trim();
+		    jsonStr = jsonStr.trim();
 
-	    // 如果前后包含多余说明，只保留数组部分
-	    if (!jsonStr.startsWith('[')) {
-	      const firstBracket = jsonStr.indexOf('[');
-	      const lastBracket = jsonStr.lastIndexOf(']');
-	      if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
-	        jsonStr = jsonStr.substring(firstBracket, lastBracket + 1);
-	      }
-	    }
+		    // 如果前后包含多余说明，只保留数组部分
+		    if (!jsonStr.startsWith('[')) {
+		      const firstBracket = jsonStr.indexOf('[');
+		      const lastBracket = jsonStr.lastIndexOf(']');
+		      if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+		        jsonStr = jsonStr.substring(firstBracket, lastBracket + 1);
+		      }
+		    }
 
-	    const rawItems: any[] = JSON.parse(jsonStr);
-	    const items: ComplianceMatrixItem[] = rawItems.map((raw, index) => ({
-	      id: typeof raw.id === 'number' ? raw.id : index + 1,
-	      text: String(raw.text || raw.requirement || ''),
-	      page: typeof raw.page === 'number' ? raw.page : Number(raw.page) || 0,
-	      section: String(raw.section || raw.section_id || ''),
-	    }));
+		    const rawItems: any[] = JSON.parse(jsonStr);
+		    const items: ComplianceMatrixItem[] = rawItems.map((raw, index) => ({
+		      id: typeof raw.id === 'number' ? raw.id : index + 1,
+		      text: String(raw.text || raw.requirement || ''),
+		      page: typeof raw.page === 'number' ? raw.page : Number(raw.page) || 0,
+		      section: String(raw.section || raw.section_id || ''),
+		    }));
 
-	    logger.info('gemini: parsed compliance requirements', {
-	      count: items.length,
-	    });
-	    return { items };
-	  } catch (e) {
-	    logger.error('gemini: compliance matrix parse error', {
-	      error: (e as Error)?.message,
-	      preview: aiResponse.substring(0, 1000),
-	    });
-	    return { items: [] };
-	  }
-}
+		    logger.info('gemini: parsed compliance requirements', {
+		      count: items.length,
+		    });
+		    return { items };
+		  } catch (e) {
+		    logger.error('gemini: compliance matrix parse error', {
+		      error: (e as Error)?.message,
+		      preview: aiResponse.substring(0, 1000),
+		    });
+
+		    // 解析失败时，尝试像错误解析那样，手动逐个对象抽取，尽量救回一部分结果
+		    try {
+		      // 不再强依赖结尾的 ']'，只要找到第一个 '[' 后面的内容即可
+		      const firstBracket = aiResponse.indexOf('[');
+		      if (firstBracket !== -1) {
+		        const arrayBody = aiResponse.substring(firstBracket + 1);
+		        const objects: any[] = [];
+		        let depth = 0;
+		        let current = '';
+		        for (let i = 0; i < arrayBody.length; i++) {
+		          const ch = arrayBody[i];
+		          if (ch === '{') {
+		            // 遇到新的对象起点时，清空之前在深度 0 下积累的逗号/空白
+		            if (depth === 0) {
+		              current = '';
+		            }
+		            depth++;
+		            current += ch;
+		          } else if (ch === '}') {
+		            if (depth > 0) {
+		              current += ch;
+		              depth--;
+		              if (depth === 0) {
+		                try {
+		                  const obj = JSON.parse(current.trim().replace(/,$/, ''));
+		                  objects.push(obj);
+		                } catch {
+		                  // 跳过无法解析的对象
+		                }
+		                current = '';
+		              }
+		            }
+		          } else if (depth > 0) {
+		            // 只在对象内部累积字符，避免把分隔逗号也并到下一个对象
+		            current += ch;
+		          }
+		        }
+
+		        if (objects.length > 0) {
+		          const items: ComplianceMatrixItem[] = objects.map((raw, index) => ({
+		            id: typeof raw.id === 'number' ? raw.id : index + 1,
+		            text: String(raw.text || raw.requirement || ''),
+		            page: typeof raw.page === 'number' ? raw.page : Number(raw.page) || 0,
+		            section: String(raw.section || raw.section_id || ''),
+		          }));
+		          logger.warn('gemini: manually extracted compliance requirements after parse failure', {
+		            count: items.length,
+		          });
+		          return { items };
+		        }
+		      }
+		    } catch (manualError) {
+		      logger.error('gemini: compliance matrix manual extraction failed', {
+		        error: (manualError as Error)?.message,
+		      });
+		    }
+
+		    return { items: [] };
+		  }
+	}
+
+	/**
+	 * 解析投标 vs RFP 对比结果 JSON
+	 */
+	function parseBidCompareResponse(
+		aiResponse: string,
+		requirements: ComplianceMatrixItem[],
+	): { items: BidComparisonItem[]; summary: BidComparisonSummary } {
+		try {
+			let jsonStr = aiResponse.trim();
+
+			// 去掉 ```json 包裹
+			if (jsonStr.startsWith('```json')) {
+				jsonStr = jsonStr.replace(/```json\s*/i, '').replace(/```\s*$/i, '');
+			} else if (jsonStr.startsWith('```')) {
+				jsonStr = jsonStr.replace(/```\s*/i, '').replace(/```\s*$/i, '');
+			}
+
+			jsonStr = jsonStr.trim();
+			const parsed: any = JSON.parse(jsonStr);
+
+			const items: BidComparisonItem[] = Array.isArray(parsed.items)
+				? parsed.items.map((raw: any, index: number) => {
+					const requirementId =
+						typeof raw.requirement_id === 'number'
+							? raw.requirement_id
+							: Number(raw.requirement_id) || requirements[index]?.id || index + 1;
+					const requirement =
+						String(raw.requirement_text || raw.requirement || requirements.find((r) => r.id === requirementId)?.text || '');
+					let statusRaw = String(raw.status || 'missing').toLowerCase();
+					let status: BidComparisonItem['status'];
+					if (statusRaw === 'covered') status = 'covered';
+					else if (statusRaw === 'partially_covered' || statusRaw === 'partial' || statusRaw === 'partially') status = 'partially_covered';
+					else status = 'missing';
+
+					return {
+						id: typeof raw.id === 'number' ? raw.id : index + 1,
+						requirement_id: requirementId,
+						requirement_text: requirement,
+						status,
+						evidence: String(raw.evidence || ''),
+						comment: String(raw.comment || ''),
+					};
+				})
+				: [];
+
+			const summaryRaw = parsed.summary || {};
+			const summary: BidComparisonSummary = {
+				total: typeof summaryRaw.total === 'number' ? summaryRaw.total : items.length,
+				covered: typeof summaryRaw.covered === 'number'
+					? summaryRaw.covered
+					: items.filter((i) => i.status === 'covered').length,
+				partially_covered: typeof summaryRaw.partially_covered === 'number'
+					? summaryRaw.partially_covered
+					: items.filter((i) => i.status === 'partially_covered').length,
+				missing: typeof summaryRaw.missing === 'number'
+					? summaryRaw.missing
+					: items.filter((i) => i.status === 'missing').length,
+			};
+
+			logger.info('gemini: parsed bid-compare result', {
+				count: items.length,
+			});
+			return { items, summary };
+		} catch (e) {
+				logger.error('gemini: bid-compare parse error', {
+					error: (e as Error)?.message,
+					preview: aiResponse.substring(0, 1000),
+				});
+				// 解析失败时，尝试像合规矩阵一样手动抽取 items，尽量救回部分结果
+				try {
+					const match = aiResponse.match(/"items"\s*:\s*\[([\s\S]*)/);
+					if (match) {
+						const arrayBody = match[1];
+						const rawObjects: any[] = [];
+						let depth = 0;
+						let current = '';
+						for (let i = 0; i < arrayBody.length; i++) {
+							const ch = arrayBody[i];
+							if (ch === '{') depth++;
+							if (ch === '}') depth--;
+							current += ch;
+							if (depth === 0 && ch === '}') {
+								try {
+									const obj = JSON.parse(current.trim().replace(/,$/, ''));
+									rawObjects.push(obj);
+								} catch {
+									// 跳过无法解析的对象
+								}
+								current = '';
+							}
+						}
+
+						if (rawObjects.length > 0) {
+							const items: BidComparisonItem[] = rawObjects.map((raw, index) => {
+								const requirementId =
+									typeof raw.requirement_id === 'number'
+										? raw.requirement_id
+										: Number(raw.requirement_id) || requirements[index]?.id || index + 1;
+								const requirement = String(
+									raw.requirement_text ||
+										raw.requirement ||
+										requirements.find((r) => r.id === requirementId)?.text ||
+										'',
+								);
+								let statusRaw = String(raw.status || 'missing').toLowerCase();
+								let status: BidComparisonItem['status'];
+								if (statusRaw === 'covered') status = 'covered';
+								else if (
+									statusRaw === 'partially_covered' ||
+									statusRaw === 'partial' ||
+									statusRaw === 'partially'
+								)
+									status = 'partially_covered';
+								else status = 'missing';
+
+								return {
+									id: typeof raw.id === 'number' ? raw.id : index + 1,
+									requirement_id: requirementId,
+									requirement_text: requirement,
+									status,
+									evidence: String(raw.evidence || ''),
+									comment: String(raw.comment || ''),
+								};
+							});
+
+							const summary: BidComparisonSummary = {
+								total: items.length,
+								covered: items.filter((i) => i.status === 'covered').length,
+								partially_covered: items.filter((i) => i.status === 'partially_covered').length,
+								missing: items.filter((i) => i.status === 'missing').length,
+							};
+
+							logger.warn('gemini: manually extracted bid-compare items after parse failure', {
+								count: items.length,
+								summary,
+							});
+							return { items, summary };
+						}
+					}
+				} catch (manualError) {
+					logger.error('gemini: bid-compare manual extraction failed', {
+						error: (manualError as Error)?.message,
+					});
+				}
+
+				return {
+					items: [],
+					summary: {
+						total: 0,
+						covered: 0,
+						partially_covered: 0,
+						missing: 0,
+					},
+				};
+		}
+	}
 
 /**
  * 解析 AI 返回的 JSON

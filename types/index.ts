@@ -51,5 +51,22 @@ export interface ComplianceMatrixItem {
 	section: string;
 }
 
+// 招标要求 vs 投标文件对比条目
+export interface BidComparisonItem {
+	id: number;
+	requirement_id: number;
+	requirement_text: string;
+	status: 'covered' | 'partially_covered' | 'missing';
+	evidence: string;
+	comment: string;
+}
+
+export interface BidComparisonSummary {
+	total: number;
+	covered: number;
+	partially_covered: number;
+	missing: number;
+}
+
 // 界面与服务端共用的语言类型
 export type Language = 'zh' | 'en';

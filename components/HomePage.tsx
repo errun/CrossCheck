@@ -63,7 +63,7 @@ const translations: Record<Language, {
 	    matrixLinkDesc: '只需上传文档，一键提取必须/应条款并生成 Excel 合规检查表。',
 	    // 首页第一个功能卡片：投标文件检查
 	    uploadCardTitle: '投标文件检查',
-    uploadCardDesc: '支持 PDF / Word(.docx) 格式，最大 50MB',
+	    uploadCardDesc: '支持 PDF / Word(.docx) 格式，最大 100MB',
     uploadPlaceholder: '点击选择 PDF / Word 文件',
     analyzeButton: '标书分析',
     analyzingTitle: '正在分析中...',
@@ -109,8 +109,8 @@ const translations: Record<Language, {
 	    heroSubtitle: '',
 	    matrixLinkLabel: 'AI Compliance Matrix Generator',
 	    matrixLinkDesc: 'Upload only the RFP to extract mandatory requirements into an Excel compliance checklist.',
-    uploadCardTitle: 'Upload Bid Document',
-    uploadCardDesc: 'Supports PDF / Word (.docx), up to 50MB',
+	    uploadCardTitle: 'Upload Bid Document',
+	    uploadCardDesc: 'Supports PDF / Word (.docx), up to 100MB',
     uploadPlaceholder: 'Click to choose a PDF / Word file',
     analyzeButton: 'Analyze Bid Document',
     analyzingTitle: 'Analyzing...',
@@ -271,8 +271,8 @@ export function HomePage({ lang }: { lang: Language }) {
 		        if (res.status === 413) {
 		          message =
 		            lang === 'zh'
-		              ? '文件太大，超过当前在线版本的上传大小上限。建议控制在 50MB 以内，或拆分为多个文件后再上传。'
-		              : 'File is too large for the current online version. Please keep it under 50MB or split it into multiple documents.';
+		              ? '文件太大，超过当前在线版本的上传大小上限。建议控制在 100MB 以内，或拆分为多个文件后再上传。'
+		              : 'File is too large for the current online version. Please keep it under 100MB or split it into multiple documents.';
 		        } else {
 		          try {
 		            const errorData = await res.json();

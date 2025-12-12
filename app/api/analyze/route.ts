@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查文件大小（默认 50MB）
-    const maxSize = parseInt(process.env.MAX_FILE_SIZE || '52428800');
+	    // 检查文件大小（默认 100MB）
+	    const maxSize = parseInt(process.env.MAX_FILE_SIZE || '104857600');
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: `File size exceeds ${maxSize / 1024 / 1024}MB limit` },
