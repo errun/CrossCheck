@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10以内加减法练习</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            padding: 35px;
+            max-width: 1000px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background: linear-gradient(90deg, #4a6ee0, #6a8aff, #4a6ee0);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a6ee0;
+            margin-bottom: 15px;
+            font-size: 2.4rem;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .description {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+        
+        .timer-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 25px;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .timer-display {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4a6ee0;
+            background: #f0f4ff;
+            padding: 10px 25px;
+            border-radius: 12px;
+            min-width: 150px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+        
+        .timer-btn {
+            background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .timer-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+        
+        .timer-btn:active {
+            transform: translateY(1px);
+        }
+        
+        .timer-btn.stop {
+            background: linear-gradient(135deg, #f44336 0%, #ef5350 100%);
+            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+        }
+        
+        .timer-btn.stop:hover {
+            box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
+        }
+        
+        .reset-btn {
+            background: linear-gradient(135deg, #FF9800 0%, #FFB74D 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .reset-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+        }
+        
+        .reset-btn:active {
+            transform: translateY(1px);
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 0 10px;
+            color: #666;
+            font-size: 1rem;
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 12px 20px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+        }
+        
+        .problems-container {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            margin-bottom: 35px;
+        }
+        
+        .problems-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+        
+        .problem {
+            background-color: #f8f9ff;
+            border-radius: 12px;
+            padding: 20px 10px;
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 85px;
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap; /* 防止换行 */
+        }
+        
+        /* 最后一列的括号题型样式 - 字体缩小确保在一行内显示 */
+        .problems-row .problem:nth-child(4) {
+            background-color: #fff8e1;
+            border: 2px solid #ffb74d;
+            font-size: 1.4rem; /* 进一步缩小字体 */
+            padding: 20px 8px; /* 调整内边距 */
+            letter-spacing: -0.5px; /* 微调字母间距 */
+        }
+        
+        .problem::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #4a6ee0, #6a8aff);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        /* 最后一列的括号题型顶部装饰条 */
+        .problems-row .problem:nth-child(4)::before {
+            background: linear-gradient(90deg, #ff9800, #ffb74d);
+        }
+        
+        .problem:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+        }
+        
+        .problem:hover::before {
+            transform: scaleX(1);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #4a6ee0 0%, #6a8aff 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 16px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(74, 110, 224, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(74, 110, 224, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        button:active::after {
+            animation: ripple 1s ease-out;
+        }
+        
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(20, 20);
+                opacity: 0;
+            }
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 25px;
+            color: #888;
+            font-size: 0.95rem;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        /* 题型说明 */
+        .type-description {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 0 10px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .type-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .type-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+        
+        .standard-color {
+            background-color: #f8f9ff;
+            border: 1px solid #4a6ee0;
+        }
+        
+        .fillin-color {
+            background-color: #fff8e1;
+            border: 1px solid #ffb74d;
+        }
+        
+        /* 括号题型特殊标记 */
+        .fillin-tag {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #ff9800;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: normal;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 900px) {
+            .container {
+                max-width: 95%;
+                padding: 25px 15px;
+            }
+            
+            .problems-row .problem:nth-child(4) {
+                font-size: 1.3rem; /* 在较小屏幕上进一步缩小字体 */
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .problems-row {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+            
+            /* 在移动设备上，最后一列的定义不同 */
+            .problems-row .problem:nth-child(2n) {
+                background-color: #fff8e1;
+                border: 2px solid #ffb74d;
+                font-size: 1.3rem;
+            }
+            
+            .problems-row .problem:nth-child(2n)::before {
+                background: linear-gradient(90deg, #ff9800, #ffb74d);
+            }
+            
+            .problem {
+                font-size: 1.6rem;
+                min-height: 80px;
+                padding: 18px 8px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .timer-section {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .problems-row {
+                grid-template-columns: 1fr;
+            }
+            
+            /* 在非常小的屏幕上，所有题目都是括号题型样式 */
+            .problems-row .problem {
+                background-color: #fff8e1;
+                border: 2px solid #ffb74d;
+                font-size: 1.4rem;
+            }
+            
+            .problems-row .problem::before {
+                background: linear-gradient(90deg, #ff9800, #ffb74d);
+            }
+            
+            .problem {
+                font-size: 1.5rem;
+                min-height: 70px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            button {
+                padding: 14px 30px;
+                font-size: 1.1rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .type-description {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>10以内加减法练习</h1>
+        <p class="description">标准题型 + 填空题型（括号题在每行最后一列，字体缩小确保一行显示）</p>
+        
+        <div class="timer-section">
+            <div class="timer-display" id="timerDisplay">00:00:00</div>
+            <button class="timer-btn" id="timerBtn">开始计时</button>
+            <button class="reset-btn" id="resetBtn">重置时间</button>
+        </div>
+        
+        <div class="type-description">
+            <div class="type-item">
+                <div class="type-color standard-color"></div>
+                <span>标准题型（前3列）</span>
+            </div>
+            <div class="type-item">
+                <div class="type-color fillin-color"></div>
+                <span>填空题型（最后1列，字体缩小确保一行显示）</span>
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div>题目数量: <span id="problemCount">20</span></div>
+            <div>标准题型: <span id="standardCount">15</span> | 填空题型: <span id="fillInBlankCount">5</span></div>
+        </div>
+        
+        <div class="problems-container" id="problemsContainer">
+            <!-- 题目将在这里生成 -->
+        </div>
+        
+        <div class="controls">
+            <button id="restartBtn">重新开始</button>
+        </div>
+        
+        <div class="footer">
+            适合小学低年级学生练习10以内加减法运算
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const problemsContainer = document.getElementById('problemsContainer');
+            const restartBtn = document.getElementById('restartBtn');
+            const problemCount = document.getElementById('problemCount');
+            const standardCount = document.getElementById('standardCount');
+            const fillInBlankCount = document.getElementById('fillInBlankCount');
+            const timerDisplay = document.getElementById('timerDisplay');
+            const timerBtn = document.getElementById('timerBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            
+            let timerInterval = null;
+            let timerRunning = false;
+            let seconds = 0;
+            let minutes = 0;
+            let hours = 0;
+            
+            // 格式化时间显示
+            function formatTime() {
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            // 更新计时器显示
+            function updateTimerDisplay() {
+                timerDisplay.textContent = formatTime();
+            }
+            
+            // 开始计时
+            function startTimer() {
+                if (timerRunning) return;
+                
+                timerRunning = true;
+                timerBtn.textContent = '停止计时';
+                timerBtn.classList.add('stop');
+                
+                timerInterval = setInterval(function() {
+                    seconds++;
+                    if (seconds >= 60) {
+                        seconds = 0;
+                        minutes++;
+                        if (minutes >= 60) {
+                            minutes = 0;
+                            hours++;
+                        }
+                    }
+                    updateTimerDisplay();
+                }, 1000);
+            }
+            
+            // 停止计时
+            function stopTimer() {
+                if (!timerRunning) return;
+                
+                timerRunning = false;
+                timerBtn.textContent = '开始计时';
+                timerBtn.classList.remove('stop');
+                
+                clearInterval(timerInterval);
+            }
+            
+            // 重置计时器
+            function resetTimer() {
+                stopTimer();
+                seconds = 0;
+                minutes = 0;
+                hours = 0;
+                updateTimerDisplay();
+            }
+            
+            // 生成所有可能的10以内加法题目
+            function generateAdditionProblems() {
+                const additionProblems = [];
+                
+                // 生成所有可能的加法题目 (a + b = c, 其中a,b,c <= 10 且 a+b <= 10)
+                for (let a = 0; a <= 10; a++) {
+                    for (let b = 0; b <= 10; b++) {
+                        if (a + b <= 10) {
+                            // 确保不是 0+0 的情况
+                            if (a !== 0 || b !== 0) {
+                                additionProblems.push(`${a} + ${b} = `);
+                            }
+                        }
+                    }
+                }
+                
+                return additionProblems;
+            }
+            
+            // 生成所有可能的10减几减法题目
+            function generateSubtractionProblems() {
+                const subtractionProblems = [];
+                
+                // 生成所有可能的减法题目 (10 - b = a, 其中b <= 10)
+                for (let b = 1; b <= 10; b++) {
+                    if (10 - b >= 0) {
+                        subtractionProblems.push(`10 - ${b} = `);
+                    }
+                }
+                
+                return subtractionProblems;
+            }
+            
+            // 生成填空题型 - 确保题目长度适中
+            function generateFillInBlankProblems() {
+                const fillInBlankProblems = [];
+                
+                // 生成较短的加法填空题型
+                const shortAdditionExamples = [
+                    "( ) + 2 = 5",
+                    "( ) + 3 = 7",
+                    "( ) + 1 = 6",
+                    "( ) + 4 = 9",
+                    "( ) + 2 = 8"
+                ];
+                
+                // 生成较短的减法填空题型
+                const shortSubtractionExamples = [
+                    "7 - ( ) = 4",
+                    "9 - ( ) = 5",
+                    "8 - ( ) = 3",
+                    "6 - ( ) = 2",
+                    "10 - ( ) = 6"
+                ];
+                
+                // 随机选择5题，确保题目长度适中
+                const allExamples = [...shortAdditionExamples, ...shortSubtractionExamples];
+                
+                // 随机打乱
+                const shuffled = [...allExamples].sort(() => Math.random() - 0.5);
+                
+                // 返回前5题
+                return shuffled.slice(0, 5);
+            }
+            
+            // 从数组中随机选择不重复的n个元素
+            function getRandomUniqueElements(array, n) {
+                if (n > array.length) {
+                    return array; // 如果需要的数量大于数组长度，返回整个数组
+                }
+                
+                // 创建一个数组的副本
+                const shuffled = [...array];
+                
+                // Fisher-Yates 洗牌算法
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                
+                // 返回前n个元素
+                return shuffled.slice(0, n);
+            }
+            
+            // 生成随机题目
+            function generateProblems() {
+                problemsContainer.innerHTML = '';
+                
+                // 生成所有可能的题目
+                const allAdditionProblems = generateAdditionProblems();
+                const allSubtractionProblems = generateSubtractionProblems();
+                const allFillInBlankProblems = generateFillInBlankProblems();
+                
+                // 随机选择标准题型：12道加法题目
+                const selectedAdditionProblems = getRandomUniqueElements(allAdditionProblems, 12);
+                
+                // 随机选择标准题型：8道减法题目
+                const selectedSubtractionProblems = getRandomUniqueElements(allSubtractionProblems, 8);
+                
+                // 合并标准题型
+                const standardProblems = [...selectedAdditionProblems, ...selectedSubtractionProblems];
+                
+                // 打乱标准题型顺序
+                const shuffledStandardProblems = [...standardProblems].sort(() => Math.random() - 0.5);
+                
+                // 从填空题型中随机选择5题
+                const selectedFillInBlankProblems = getRandomUniqueElements(allFillInBlankProblems, 5);
+                
+                // 生成5行题目，每行4题
+                for (let row = 0; row < 5; row++) {
+                    const rowElement = document.createElement('div');
+                    rowElement.className = 'problems-row';
+                    
+                    for (let col = 0; col < 4; col++) {
+                        const problemIndex = row * 4 + col;
+                        let problemText;
+                        
+                        // 判断是否是最后一列（col === 3）
+                        if (col === 3) {
+                            // 最后一列为填空题型
+                            problemText = selectedFillInBlankProblems[row] || `( ) + 2 = 5`;
+                        } else {
+                            // 前3列为标准题型
+                            const standardIndex = row * 3 + col;
+                            problemText = shuffledStandardProblems[standardIndex] || `${Math.floor(Math.random() * 6) + 1} + ${Math.floor(Math.random() * 5) + 1} = `;
+                        }
+                        
+                        const problemElement = document.createElement('div');
+                        problemElement.className = 'problem';
+                        problemElement.textContent = problemText;
+                        
+                        // 为括号题型添加标签
+                        if (col === 3) {
+                            const tagElement = document.createElement('div');
+                            tagElement.className = 'fillin-tag';
+                            tagElement.textContent = '填空';
+                            problemElement.appendChild(tagElement);
+                        }
+                        
+                        rowElement.appendChild(problemElement);
+                    }
+                    
+                    problemsContainer.appendChild(rowElement);
+                }
+                
+                // 更新统计信息
+                standardCount.textContent = '15';
+                fillInBlankCount.textContent = '5';
+                problemCount.textContent = '20';
+            }
+            
+            // 计时按钮点击事件
+            timerBtn.addEventListener('click', function() {
+                if (timerRunning) {
+                    stopTimer();
+                } else {
+                    startTimer();
+                }
+            });
+            
+            // 重置时间按钮点击事件
+            resetBtn.addEventListener('click', function() {
+                resetTimer();
+            });
+            
+            // 初始生成题目
+            generateProblems();
+            
+            // 重新开始按钮事件
+            restartBtn.addEventListener('click', function() {
+                // 添加按钮点击动画
+                this.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                    generateProblems();
+                    resetTimer();
+                }, 150);
+            });
+        });
+    </script>
+</body>
+</html>
