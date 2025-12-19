@@ -45,15 +45,18 @@ export default clerkMiddleware((auth, req) => {
 		isChineseRegion,
 	});
 
-	// 第一层：如果用户访问了明确的 /zh 前缀，则记住偏好为 zh
-	if (isZhPath && langCookie !== "zh") {
-		console.log("[middleware-lang] set lang=zh", { pathname, country, prevLang: langCookie });
+		// 第一层：所有 /zh 路径统一标记为中文，并尽量记住偏好为 zh
+		if (isZhPath) {
+			console.log("[middleware-lang] ensure zh context", { pathname, country, prevLang: langCookie });
 			const requestHeaders = new Headers(req.headers);
 			requestHeaders.set("x-app-lang", "zh");
 			const res = NextResponse.next({ request: { headers: requestHeaders } });
-		res.cookies.set("lang", "zh", { path: "/", maxAge: 60 * 60 * 24 * 365 });
-		return res;
-	}
+			// 只有在 cookie 不是 zh 时才写入，避免无意义覆盖
+			if (langCookie !== "zh") {
+				res.cookies.set("lang", "zh", { path: "/", maxAge: 60 * 60 * 24 * 365 });
+			}
+			return res;
+		}
 
 	// 第二层：如果还没有任何语言偏好，且来自中文地区，并访问英文入口路径，则自动跳到对应的 /zh
 	if (!langCookie && isChineseRegion && isEnglishRoot && hasZhVariant) {
