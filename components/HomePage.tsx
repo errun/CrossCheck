@@ -10,6 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { ErrorItem, Language } from '@/types';
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser, useClerk } from '@clerk/nextjs';
 
+// 应用版本号（包含日期时间）。
+// 未来如果在部署环境中设置 NEXT_PUBLIC_APP_VERSION，则会优先使用环境变量的值。
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'v2025-12-19 00:00';
+
 const translations: Record<Language, {
   appName: string;
   heroTitle: string;
@@ -324,8 +328,11 @@ export function HomePage({ lang }: { lang: Language }) {
 		              R
 		            </div>
 		            <div className="leading-tight">
-		              <p className="text-sm font-semibold text-slate-900">{t.appName}</p>
-		              <p className="text-xs text-slate-600">AI RFP &amp; bid compliance copilot</p>
+			              <p className="text-sm font-semibold text-slate-900">{t.appName}</p>
+			              <p className="text-xs text-slate-600">AI RFP &amp; bid compliance copilot</p>
+			              <p className="text-[10px] text-slate-500 mt-0.5">
+			                {lang === 'zh' ? `版本：${APP_VERSION}` : `Version: ${APP_VERSION}`}
+			              </p>
 		            </div>
 		          </div>
 		          <div className="flex items-center gap-6">
