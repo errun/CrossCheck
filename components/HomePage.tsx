@@ -369,46 +369,53 @@ export function HomePage({ lang }: { lang: Language }) {
 		                  {t.langSwitchEn}
 		                </Link>
 				              </div>
-				      {/* 桌面端：积分 + 登录区 */}
-				      <div className="hidden md:flex items-center gap-3 text-sm">
-				        <SignedOut>
-				          <div className="flex items-center gap-2">
-				            <SignInButton mode="modal">
-				              <Button variant="outline" size="sm">
-				                {lang === 'zh' ? '登录' : 'Sign in'}
-				              </Button>
-				            </SignInButton>
-				            <SignUpButton mode="modal">
-				              <Button variant="outline" size="sm">
-				                {lang === 'zh' ? '注册' : 'Sign up'}
-				              </Button>
-				            </SignUpButton>
-				          </div>
-				        </SignedOut>
-					                <SignedIn>
-					                  {typeof credits === 'number' && (
-					                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
-					                      {lang === 'zh'
-					                        ? `余额 ${credits} 积分`
-					                        : `${credits} credits`}
-					                    </span>
-					                  )}
-					                  <UserButton afterSignOutUrl="/" />
-					                </SignedIn>
-					              </div>
-					              {/* 手机端：只显示登录按钮或头像 */}
-					              <div className="flex md:hidden items-center">
-					                <SignedOut>
-					                  <SignInButton mode="modal">
-					                    <Button variant="outline" size="sm">
-					                      {lang === 'zh' ? '登录' : 'Sign in'}
-					                    </Button>
-					                  </SignInButton>
-					                </SignedOut>
-					                <SignedIn>
-					                  <UserButton afterSignOutUrl="/" />
-					                </SignedIn>
-					              </div>
+              {/* 桌面端：积分 + 登录区 */}
+              <div className="hidden md:flex items-center gap-3 text-sm">
+                <SignedOut>
+                  <div className="flex items-center gap-2">
+                    <SignInButton mode="modal">
+                      <Button variant="outline" size="sm">
+                        {lang === 'zh' ? '登录' : 'Sign in'}
+                      </Button>
+                    </SignInButton>
+                    <SignUpButton mode="modal">
+                      <Button variant="outline" size="sm">
+                        {lang === 'zh' ? '注册' : 'Sign up'}
+                      </Button>
+                    </SignUpButton>
+                  </div>
+                </SignedOut>
+                <SignedIn>
+                  {typeof credits === 'number' && (
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
+                      {lang === 'zh'
+                        ? `余额 ${credits} 积分`
+                        : `${credits} credits`}
+                    </span>
+                  )}
+                  <UserButton afterSignOutUrl="/" />
+                </SignedIn>
+              </div>
+              {/* 手机端：显示登录 + 注册按钮或头像 */}
+              <div className="flex md:hidden items-center gap-2">
+                <SignedOut>
+                  <div className="flex items-center gap-2">
+                    <SignInButton mode="modal">
+                      <Button variant="outline" size="sm">
+                        {lang === 'zh' ? '登录' : 'Sign in'}
+                      </Button>
+                    </SignInButton>
+                    <SignUpButton mode="modal">
+                      <Button variant="outline" size="sm">
+                        {lang === 'zh' ? '注册' : 'Sign up'}
+                      </Button>
+                    </SignUpButton>
+                  </div>
+                </SignedOut>
+                <SignedIn>
+                  <UserButton afterSignOutUrl="/" />
+                </SignedIn>
+              </div>
 		            </div>
 		          </div>
 		        </div>
@@ -549,33 +556,35 @@ export function HomePage({ lang }: { lang: Language }) {
 		              </CardContent>
 		            </Card>
 
-		            {/* Font Compliance Checker 热点入口（红色渐变小卡片） */}
-		            <Card className="bg-gradient-to-r from-rose-600 via-orange-500 to-amber-400 text-white border-none shadow-md rounded-xl">
-		              <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-		                <div className="flex items-start gap-3">
-		                  <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide">
-		                    <Flame className="h-4 w-4" />
-		                    <span>HOT</span>
-		                  </div>
-		                  <div className="text-sm md:text-base">
-		                    <p className="font-semibold">Font Wars: Is Your Document Government-Approved?</p>
-		                    <p className="text-xs md:text-sm text-amber-50/90">
-		                      Is your font too woke? Check compliance after Rubio banned Calibri.
-		                    </p>
-		                  </div>
-		                </div>
-		                <Link href="/font-checker" className="inline-flex">
-		                  <Button
-		                    variant="secondary"
-		                    size="sm"
-		                    className="inline-flex items-center gap-1 bg-white/90 text-rose-700 hover:bg-white"
-		                  >
-		                    <span>Check My Document Now</span>
-		                    <ArrowRight className="h-4 w-4" />
-		                  </Button>
-		                </Link>
-		              </CardContent>
-		            </Card>
+			            {/* Font Compliance Checker 热点入口（红色渐变小卡片） - 先从首页隐藏 */}
+			            {false && (
+			              <Card className="bg-gradient-to-r from-rose-600 via-orange-500 to-amber-400 text-white border-none shadow-md rounded-xl">
+			                <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+			                  <div className="flex items-start gap-3">
+			                    <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide">
+			                      <Flame className="h-4 w-4" />
+			                      <span>HOT</span>
+			                    </div>
+			                    <div className="text-sm md:text-base">
+			                      <p className="font-semibold">Font Wars: Is Your Document Government-Approved?</p>
+			                      <p className="text-xs md:text-sm text-amber-50/90">
+			                        Is your font too woke? Check compliance after Rubio banned Calibri.
+			                      </p>
+			                    </div>
+			                  </div>
+			                  <Link href="/font-checker" className="inline-flex">
+			                    <Button
+			                      variant="secondary"
+			                      size="sm"
+			                      className="inline-flex items-center gap-1 bg-white/90 text-rose-700 hover:bg-white"
+			                    >
+			                      <span>Check My Document Now</span>
+			                      <ArrowRight className="h-4 w-4" />
+			                    </Button>
+			                  </Link>
+			                </CardContent>
+			              </Card>
+			            )}
 		          </div>
 	        )}
 

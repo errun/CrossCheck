@@ -237,14 +237,21 @@ export default function ComplianceMatrixPage({
                 <UserButton afterSignOutUrl="/" />
               </SignedIn>
             </div>
-            {/* 移动端：仅登录入口 */}
-            <div className="flex md:hidden items-center">
+            {/* 移动端：显示登录 + 注册入口 */}
+            <div className="flex md:hidden items-center gap-2">
               <SignedOut>
-                <SignInButton mode="modal">
-                  <button className="px-3 py-1 rounded-full text-sm border border-slate-300 bg-white text-slate-700">
-                    {lang === "zh" ? "登录" : "Sign in"}
-                  </button>
-                </SignInButton>
+                <div className="flex items-center gap-2">
+                  <SignInButton mode="modal">
+                    <button className="px-3 py-1 rounded-full text-sm border border-slate-300 bg-white text-slate-700">
+                      {lang === "zh" ? "登录" : "Sign in"}
+                    </button>
+                  </SignInButton>
+                  <SignUpButton mode="modal">
+                    <button className="px-3 py-1 rounded-full text-sm border border-slate-300 bg-white text-slate-700">
+                      {lang === "zh" ? "注册" : "Sign up"}
+                    </button>
+                  </SignUpButton>
+                </div>
               </SignedOut>
               <SignedIn>
                 <UserButton afterSignOutUrl="/" />

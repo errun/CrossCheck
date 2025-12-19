@@ -49,18 +49,20 @@ export const metadata: Metadata = {
 	},
 };
 
-export default function RootLayout({
-		  children,
-		}: Readonly<{
-		  children: React.ReactNode;
-		}>) {
-		  const requestHeaders = headers();
-		  const headerLang = requestHeaders.get("x-app-lang");
-		  const cookieLang = cookies().get("lang")?.value;
-		  const effectiveLang = headerLang || cookieLang;
-		  const clerkLocalization = effectiveLang === "zh" ? zhCN : undefined;
+	export default function RootLayout({
+			  children,
+			}: Readonly<{
+			  children: React.ReactNode;
+			}>) {
+			  const requestHeaders = headers();
+			  const headerLang = requestHeaders.get("x-app-lang");
+			  const cookieLang = cookies().get("lang")?.value;
+			  const acceptLanguage = requestHeaders.get("accept-language") || "";
+			  const prefersZh = acceptLanguage.toLowerCase().includes("zh");
+			  const effectiveLang = headerLang || cookieLang || (prefersZh ? "zh" : "en");
+			  const clerkLocalization = effectiveLang === "zh" ? zhCN : undefined;
 
-		  return (
+			  return (
 		    <ClerkProvider localization={clerkLocalization}>
 		      <html lang="en">
 		        <body className={`${inter.className} bg-slate-50 text-slate-900`}>
