@@ -348,7 +348,7 @@ export function HomePage({ lang }: { lang: Language }) {
 		                  {t.langSwitchZh}
 		                </Link>
 		                <Link
-		                  href="/"
+				                  href="/?lang=en"
 		                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
 		                    lang === 'en'
 		                      ? 'bg-blue-600 text-white border-blue-500 shadow-sm'

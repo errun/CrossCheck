@@ -94,19 +94,22 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50">
-	      <div className="container mx-auto px-4 py-8 space-y-8">
-	        {/* 顶部导航：返回首页（暂不显示登录 / 积分区） */}
-	        <div className="flex items-center justify-between max-w-5xl mx-auto mb-4 gap-4">
-	          <Link href={"/"} className="flex items-center text-sm text-slate-600 hover:text-blue-600">
-	            <span className="mr-1 text-base">←</span>
-	            <span>{lang === "zh" ? "返回首页" : "Back to home"}</span>
-	          </Link>
-	          <div className="flex items-center gap-4">
-	            {/* 右侧暂不显示登录 / 积分信息，后续如需可再开启 */}
-	          </div>
-	        </div>
+	  return (
+	    <div className="min-h-screen bg-slate-50">
+		      <div className="container mx-auto px-4 py-8 space-y-8">
+		        {/* 顶部导航：返回首页（暂不显示登录 / 积分区） */}
+		        <div className="flex items-center justify-between max-w-5xl mx-auto mb-4 gap-4">
+		          <Link
+		            href={lang === "zh" ? "/zh" : "/"}
+		            className="flex items-center text-sm text-slate-600 hover:text-blue-600"
+		          >
+		            <span className="mr-1 text-base">←</span>
+		            <span>{lang === "zh" ? "返回首页" : "Back to home"}</span>
+		          </Link>
+		          <div className="flex items-center gap-4">
+		            {/* 右侧暂不显示登录 / 积分信息，后续如需可再开启 */}
+		          </div>
+		        </div>
 
         {/* 标题区 */}
         <header className="max-w-3xl mx-auto text-center space-y-3">

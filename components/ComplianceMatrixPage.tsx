@@ -170,7 +170,7 @@ export default function ComplianceMatrixPage({
 	                中文
 	              </Link>
 	              <Link
-	                href="/compliance-matrix"
+		                href="/compliance-matrix?lang=en"
 	                className={`ml-1 px-3 py-1 rounded-full text-sm border ${
 	                  lang === "en"
 	                    ? "bg-blue-600 text-white border-blue-600"
