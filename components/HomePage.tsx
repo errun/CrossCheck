@@ -14,13 +14,15 @@ import { ErrorItem, Language } from '@/types';
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'v2025-12-19 00:00';
 
 const translations: Record<Language, {
-  appName: string;
-  heroTitle: string;
-  heroSubtitle: string;
-	matrixLinkLabel: string;
-	matrixLinkDesc: string;
-	  uploadCardTitle: string;
-  uploadCardDesc: string;
+	  appName: string;
+	  heroTitle: string;
+	  heroSubtitle: string;
+		matrixLinkLabel: string;
+		matrixLinkDesc: string;
+		bidWriterLinkLabel: string;
+		bidWriterLinkDesc: string;
+		  uploadCardTitle: string;
+	  uploadCardDesc: string;
   uploadPlaceholder: string;
   analyzeButton: string;
   analyzingTitle: string;
@@ -57,15 +59,18 @@ const translations: Record<Language, {
 		  faqQ2: string;
 		  faqA2: string;
 }> = {
-	  zh: {
-	    appName: '标书全能王',
-		    heroTitle: '自动化标书合规性与错误扫描',
-		    heroSubtitle: '',
-	    // 首页第二个功能卡片：招标文件提取
-	    matrixLinkLabel: '招标文件提取',
-	    matrixLinkDesc: '只需上传文档，一键提取必须/应条款并生成 Excel 合规检查表。',
-	    // 首页第一个功能卡片：投标文件检查
-	    uploadCardTitle: '投标文件检查',
+		  zh: {
+		    appName: '标书全能王',
+			    heroTitle: '自动化标书合规性与错误扫描',
+			    heroSubtitle: '',
+			    // 首页功能卡片：招标文件提取
+			    matrixLinkLabel: '招标文件提取',
+			    matrixLinkDesc: '只需上传文档，一键提取必须/应条款并生成 Excel 合规检查表。',
+			    // 首页功能卡片：投标文件生成（Bid Writer）
+			    bidWriterLinkLabel: '投标文件生成',
+			    bidWriterLinkDesc: '根据招标文件一键生成标准化投标文件草稿，并支持导出 Word 模板。',
+			    // 首页第一个功能卡片：投标文件检查
+			    uploadCardTitle: '投标文件检查',
 	    uploadCardDesc: '支持 PDF / Word(.docx) 格式，最大 100MB',
     uploadPlaceholder: '点击选择 PDF / Word 文件',
     analyzeButton: '标书分析',
@@ -106,13 +111,15 @@ const translations: Record<Language, {
 	    faqA2:
 	      '没有任何工具能 100% 保证中标，但通过在提交前自动发现 P1 致命风险和重要合规缺口，它可以大幅降低因低级错误或漏项而导致的废标可能性。',
   },
-	  en: {
-	    appName: 'CrossCheck',
-		    heroTitle: 'Automated Proposal Compliance & Error Scanner',
-	    heroSubtitle: '',
-	    matrixLinkLabel: 'AI Compliance Matrix Generator',
-	    matrixLinkDesc: 'Upload only the RFP to extract mandatory requirements into an Excel compliance checklist.',
-	    uploadCardTitle: 'Upload Bid Document',
+		  en: {
+		    appName: 'CrossCheck',
+			    heroTitle: 'Automated Proposal Compliance & Error Scanner',
+		    heroSubtitle: '',
+		    matrixLinkLabel: 'AI Compliance Matrix Generator',
+		    matrixLinkDesc: 'Upload only the RFP to extract mandatory requirements into an Excel compliance checklist.',
+		    bidWriterLinkLabel: 'AI Bid Draft Generator',
+		    bidWriterLinkDesc: 'Let AI draft a full proposal document from the RFP and export it to Word.',
+		    uploadCardTitle: 'Upload Bid Document',
 	    uploadCardDesc: 'Supports PDF / Word (.docx), up to 100MB',
     uploadPlaceholder: 'Click to choose a PDF / Word file',
     analyzeButton: 'Analyze Bid Document',
@@ -494,6 +501,34 @@ export function HomePage({ lang }: { lang: Language }) {
 		                </div>
 		              </CardContent>
 		            </Card>
+
+		            {/* 投标文件生成（Bid Writer）入口卡片，仅在中文首页展示 */}
+		            {lang === 'zh' && (
+		              <Card className="bg-slate-900 text-white border-slate-800 shadow-sm rounded-xl">
+		                <CardHeader>
+		                  <CardTitle className="flex items-center gap-2">
+		                    <span>{t.bidWriterLinkLabel}</span>
+		                  </CardTitle>
+		                  <CardDescription className="text-slate-200">
+		                    {t.bidWriterLinkDesc}
+		                  </CardDescription>
+		                </CardHeader>
+		                <CardContent>
+		                  <div className="flex justify-end">
+		                    <Link href="/zh/bid-writer" className="inline-flex">
+		                      <Button
+		                        variant="secondary"
+		                        size="sm"
+		                        className="inline-flex items-center gap-1"
+		                      >
+		                        <span>前往投标文件生成</span>
+		                        <ArrowRight className="h-4 w-4" />
+		                      </Button>
+		                    </Link>
+		                  </div>
+		                </CardContent>
+		              </Card>
+		            )}
 
 			            {/* Font Compliance Checker 热点入口（红色渐变小卡片） - 先从首页隐藏 */}
 			            {false && (
