@@ -22,15 +22,6 @@ import {
 } from "@/components/ui/table";
 import type { ComplianceMatrixItem, Language } from "@/types";
 import { downloadMatrixAsExcel } from "@/lib/exportMatrix";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-  useUser,
-  useClerk,
-} from "@clerk/nextjs";
 
 const faqContent = {
   zh: {
@@ -63,12 +54,7 @@ export default function ComplianceMatrixPage({
   const [error, setError] = useState<string>("");
   const [items, setItems] = useState<ComplianceMatrixItem[]>([]);
   const [complyMap, setComplyMap] = useState<Record<number, string>>({});
-  const [commentMap, setCommentMap] = useState<Record<number, string>>({});
-
-  const { user } = useUser();
-  const anyUser = user as any;
-  const { openSignIn } = useClerk();
-  const credits = (anyUser?.privateMetadata?.credits as number | undefined) ?? null;
+	  const [commentMap, setCommentMap] = useState<Record<number, string>>({});
 
   const faq = faqContent[lang];
 
@@ -95,16 +81,11 @@ export default function ComplianceMatrixPage({
     setItems([]);
   };
 
-  const handleGenerate = async () => {
-    if (!file) return;
+	  const handleGenerate = async () => {
+	    if (!file) return;
 
-    // Require sign-in before generating matrix
-    if (!user) {
-      openSignIn?.({});
-      return;
-    }
-
-    setLoading(true);
+	    // Authentication is not required for compliance matrix generation in the current low-volume phase.
+	    setLoading(true);
     setError("");
     setItems([]);
     setComplyMap({});
@@ -122,26 +103,16 @@ export default function ComplianceMatrixPage({
         body: formData,
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
+	      if (!res.ok) {
+	        const data = await res.json().catch(() => null);
 
-        if (res.status === 402) {
-          const current = data?.credits ?? 0;
-          const required = data?.required ?? undefined;
-          const message =
-            lang === "zh"
-              ? `积分不足，本次分析${required ? `需要 ${required} 积分，` : ""}当前余额 ${current}。请充值 / 联系我。`
-              : `Insufficient credits. This analysis${required ? ` requires ${required} credits,` : ""} you currently have ${current}. Please top up or contact us.`;
-          throw new Error(message);
-        }
-
-        throw new Error(
-          data?.error ||
-            (lang === "zh"
-              ? "分析失败，请稍后重试"
-              : "Analysis failed, please try again later"),
-        );
-      }
+	        throw new Error(
+	          data?.error ||
+	            (lang === "zh"
+	              ? "分析失败，请稍后重试"
+	              : "Analysis failed, please try again later"),
+	        );
+	      }
 
       const data = await res.json();
       setItems((data.items || []) as ComplianceMatrixItem[]);
@@ -174,91 +145,43 @@ export default function ComplianceMatrixPage({
     setCommentMap((prev) => ({ ...prev, [id]: value }));
   };
 
-  const isCreditsError =
-    error.includes("Insufficient credits") || error.includes("积分不足");
-
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="container mx-auto px-4 py-8 space-y-8">
-        {/* 顶部导航：返回首页 + 语言切换 + 登录 */}
-        <div className="flex items-center justify-between max-w-5xl mx-auto mb-4 gap-4">
-          <Link
-            href={lang === "zh" ? "/zh" : "/"}
-            className="flex items-center text-sm text-slate-600 hover:text-blue-600"
-          >
-            <span className="mr-1 text-base">←</span>
-            <span>{lang === "zh" ? "返回首页" : "Back to home"}</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <div className="inline-flex rounded-full bg-white/60 p-1 shadow-sm border border-slate-200">
-              <Link
-                href="/zh/compliance-matrix"
-                className={`px-3 py-1 rounded-full text-sm border ${
-                  lang === "zh"
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-700 border-gray-300"
-                }`}
-              >
-                中文
-              </Link>
-              <Link
-                href="/compliance-matrix"
-                className={`ml-1 px-3 py-1 rounded-full text-sm border ${
-                  lang === "en"
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-700 border-gray-300"
-                }`}
-              >
-                English
-              </Link>
-            </div>
-            {/* 桌面端：积分 + 登录区 */}
-            <div className="hidden md:flex items-center gap-3 text-sm">
-              <SignedOut>
-                <div className="flex items-center gap-2">
-                  <SignInButton mode="modal">
-                    <Button variant="outline" size="sm">
-                      {lang === "zh" ? "登录" : "Sign in"}
-                    </Button>
-                  </SignInButton>
-                  <SignUpButton mode="modal">
-                    <Button variant="outline" size="sm">
-                      {lang === "zh" ? "注册" : "Sign up"}
-                    </Button>
-                  </SignUpButton>
-                </div>
-              </SignedOut>
-              <SignedIn>
-                {typeof credits === "number" && (
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
-                    {lang === "zh" ? `余额 ${credits} 积分` : `${credits} credits`}
-                  </span>
-                )}
-                <UserButton afterSignOutUrl="/" />
-              </SignedIn>
-            </div>
-            {/* 移动端：显示登录 + 注册入口 */}
-            <div className="flex md:hidden items-center gap-2">
-              <SignedOut>
-                <div className="flex items-center gap-2">
-                  <SignInButton mode="modal">
-                    <button className="px-3 py-1 rounded-full text-sm border border-slate-300 bg-white text-slate-700">
-                      {lang === "zh" ? "登录" : "Sign in"}
-                    </button>
-                  </SignInButton>
-                  <SignUpButton mode="modal">
-                    <button className="px-3 py-1 rounded-full text-sm border border-slate-300 bg-white text-slate-700">
-                      {lang === "zh" ? "注册" : "Sign up"}
-                    </button>
-                  </SignUpButton>
-                </div>
-              </SignedOut>
-              <SignedIn>
-                <UserButton afterSignOutUrl="/" />
-              </SignedIn>
-            </div>
-          </div>
-        </div>
+	      <div className="container mx-auto px-4 py-8 space-y-8">
+	        {/* 顶部导航：返回首页 + 语言切换（暂不显示登录 / 积分区域） */}
+	        <div className="flex items-center justify-between max-w-5xl mx-auto mb-4 gap-4">
+	          <Link
+	            href={lang === "zh" ? "/zh" : "/"}
+	            className="flex items-center text-sm text-slate-600 hover:text-blue-600"
+	          >
+	            <span className="mr-1 text-base">←</span>
+	            <span>{lang === "zh" ? "返回首页" : "Back to home"}</span>
+	          </Link>
+	          <div className="flex items-center gap-4">
+	            <div className="inline-flex rounded-full bg-white/60 p-1 shadow-sm border border-slate-200">
+	              <Link
+	                href="/zh/compliance-matrix"
+	                className={`px-3 py-1 rounded-full text-sm border ${
+	                  lang === "zh"
+	                    ? "bg-blue-600 text-white border-blue-600"
+	                    : "bg-white text-gray-700 border-gray-300"
+	                }`}
+	              >
+	                中文
+	              </Link>
+	              <Link
+	                href="/compliance-matrix"
+	                className={`ml-1 px-3 py-1 rounded-full text-sm border ${
+	                  lang === "en"
+	                    ? "bg-blue-600 text-white border-blue-600"
+	                    : "bg-white text-gray-700 border-gray-300"
+	                }`}
+	              >
+	                English
+	              </Link>
+	            </div>
+	          </div>
+	        </div>
 
         {/* Hero 区域 */}
         <header className="max-w-3xl mx-auto text-center space-y-3">
@@ -329,33 +252,31 @@ export default function ComplianceMatrixPage({
                 </label>
               </div>
 
-              {error && (
-                <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-3 py-2 space-y-1">
-                  <p>{error}</p>
-                  {isCreditsError && (
-                    <a
-                      href="mailto:edwin.z.w@qq.com"
-                      className="inline-block underline underline-offset-2 text-rose-800 hover:text-rose-900"
-                    >
-                      {lang === "zh"
-                        ? "点击这里给我发邮件：edwin.z.w@qq.com"
-                        : "Click here to email me: edwin.z.w@qq.com"}
-                    </a>
-                  )}
-                  <div className="pt-1">
-                    <p className="text-xs mb-1">
-                      {lang === "zh"
-                        ? "也可以微信扫码联系我："
-                        : "Or scan this WeChat QR code to contact me:"}
-                    </p>
-                    <img
-                      src="/wechat-qr.png"
-                      alt="WeChat QR code"
-                      className="h-20 w-20 rounded-md border border-rose-200 bg-white"
-                    />
-                  </div>
-                </div>
-              )}
+	              {error && (
+	                <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-3 py-2 space-y-1">
+	                  <p>{error}</p>
+	                  <a
+	                    href="mailto:edwin.z.w@qq.com"
+	                    className="inline-block underline underline-offset-2 text-rose-800 hover:text-rose-900"
+	                  >
+	                    {lang === "zh"
+	                      ? "点击这里给我发邮件：edwin.z.w@qq.com"
+	                      : "Click here to email me: edwin.z.w@qq.com"}
+	                  </a>
+	                  <div className="pt-1">
+	                    <p className="text-xs mb-1">
+	                      {lang === "zh"
+	                        ? "也可以微信扫码联系我："
+	                        : "Or scan this WeChat QR code to contact me:"}
+	                    </p>
+	                    <img
+	                      src="/wechat-qr.png"
+	                      alt="WeChat QR code"
+	                      className="h-20 w-20 rounded-md border border-rose-200 bg-white"
+	                    />
+	                  </div>
+	                </div>
+	              )}
 
               <Button
                 onClick={handleGenerate}

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
 import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
 import { extractComplianceMatrix, compareRfpAndBid } from '@/lib/gemini';
@@ -26,16 +25,6 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json(
 				{ error: 'Both RFP file and bid file are required' },
 				{ status: 400 },
-			);
-		}
-
-		// 必须登录
-		const { userId } = await auth();
-		if (!userId) {
-			logger.warn('bid-compare: unauthenticated access');
-			return NextResponse.json(
-				{ error: 'You must be signed in to compare documents.' },
-				{ status: 401 },
 			);
 		}
 
@@ -83,64 +72,15 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-			// 积分计算：按两份文件的总大小计费
-		const clerk = await clerkClient();
-		const user = await clerk.users.getUser(userId);
-		const privateMetadata = (user.privateMetadata || {}) as Record<string, any>;
-		const DEFAULT_INITIAL_CREDITS = 200;
-		const currentCredits =
-			typeof privateMetadata.credits === 'number'
-				? privateMetadata.credits
-				: DEFAULT_INITIAL_CREDITS;
-
-			const totalBytes = rfpFile.size + bidFile.size;
-			const sizeInMB = totalBytes / (1024 * 1024);
-			const blocks = Math.max(1, Math.ceil(sizeInMB / 10));
-			// 临时：测试阶段不扣积分，保持 cost = 0，方便你反复调试
-			// 如果后续要恢复计费，可以改回：const cost = blocks * 15
-			const cost = 0;
-
-		if (currentCredits < cost) {
-			logger.warn('bid-compare: insufficient credits', {
-				userId,
-				required: cost,
-				currentCredits,
+			// NOTE: Authentication and credit charging are temporarily disabled for low-volume testing.
+			logger.info('bid-compare: request accepted', {
 				rfpName,
 				bidName,
+				rfpSize: rfpFile.size,
+				bidSize: bidFile.size,
+				lang,
+				modelType,
 			});
-			return NextResponse.json(
-				{
-					error: 'Insufficient credits',
-					credits: currentCredits,
-					required: cost,
-				},
-				{ status: 402 },
-			);
-		}
-
-			const newBalance = currentCredits - cost;
-		await clerk.users.updateUserMetadata(userId, {
-			privateMetadata: {
-				...privateMetadata,
-				credits: newBalance,
-			},
-			publicMetadata: {
-				...(user.publicMetadata as Record<string, any>),
-				credits: newBalance,
-			},
-		});
-
-		logger.info('bid-compare: request accepted', {
-			userId,
-			rfpName,
-			bidName,
-			rfpSize: rfpFile.size,
-			bidSize: bidFile.size,
-			lang,
-			modelType,
-			cost,
-			remainingCredits: newBalance,
-		});
 
 		// 解析文本（不落盘，直接内存处理）
 		const [rfpArrayBuffer, bidArrayBuffer] = await Promise.all([

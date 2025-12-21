@@ -2,9 +2,6 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ClerkProvider } from "@clerk/nextjs";
-import { cookies, headers } from "next/headers";
-import { zhCN } from "@clerk/localizations";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -49,50 +46,41 @@ export const metadata: Metadata = {
 	},
 };
 
-	export default function RootLayout({
-			  children,
-			}: Readonly<{
-			  children: React.ReactNode;
-			}>) {
-			  const requestHeaders = headers();
-			  const headerLang = requestHeaders.get("x-app-lang");
-			  const cookieLang = cookies().get("lang")?.value;
-			  const acceptLanguage = requestHeaders.get("accept-language") || "";
-			  const prefersZh = acceptLanguage.toLowerCase().includes("zh");
-			  const effectiveLang = headerLang || cookieLang || (prefersZh ? "zh" : "en");
-			  const clerkLocalization = effectiveLang === "zh" ? zhCN : undefined;
-
-			  return (
-		    <ClerkProvider localization={clerkLocalization}>
-		      <html lang="en">
-		        <body className={`${inter.className} bg-slate-50 text-slate-900`}>
-	          {/* Google Analytics 4 */}
-	          <Script
-	            src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-	            strategy="afterInteractive"
-	          />
-	          <Script id="gtag-init" strategy="afterInteractive">
-	            {`
-	              window.dataLayer = window.dataLayer || [];
-	              function gtag(){dataLayer.push(arguments);} 
-	              gtag('js', new Date());
-	              gtag('config', '${GA_MEASUREMENT_ID}');
-	            `}
-	          </Script>
-		          {/* Microsoft Clarity */}
-		          <Script id="ms-clarity" strategy="afterInteractive">
-		            {`
-		              (function(c,l,a,r,i,t,y){
-		                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-		                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-		                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-		              })(window, document, "clarity", "script", "ui8gq59tt5");
-		            `}
-		          </Script>
-	          {children}
-	        </body>
-	      </html>
-	    </ClerkProvider>
-	  );
-	}
-
+		export default function RootLayout({
+				  children,
+				}: Readonly<{
+				  children: React.ReactNode;
+				}>) {
+				  return (
+			      <html lang="en">
+			        <body className={`${inter.className} bg-slate-50 text-slate-900`}>
+			          {/* Google Analytics 4 */}
+			          <Script
+			            src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+			            strategy="afterInteractive"
+			          />
+			          <Script id="gtag-init" strategy="afterInteractive">
+			            {`
+			              window.dataLayer = window.dataLayer || [];
+			              function gtag(){dataLayer.push(arguments);} 
+			              gtag('js', new Date());
+			              gtag('config', '${GA_MEASUREMENT_ID}');
+			            `}
+			          </Script>
+				          {/* Microsoft Clarity */}
+				          <Script id="ms-clarity" strategy="afterInteractive">
+				            {`
+				              (function(c,l,a,r,i,t,y){
+				                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+				                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+				                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+				              })(window, document, "clarity", "script", "ui8gq59tt5");
+				            `}
+				          </Script>
+			          {children}
+			        </body>
+			      </html>
+			  );
+			}
+		
+		

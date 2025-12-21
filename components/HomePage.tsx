@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ErrorItem, Language } from '@/types';
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser, useClerk } from '@clerk/nextjs';
 
 // 应用版本号（包含日期时间）。
 // 未来如果在部署环境中设置 NEXT_PUBLIC_APP_VERSION，则会优先使用环境变量的值。
@@ -198,11 +197,7 @@ export function HomePage({ lang }: { lang: Language }) {
 		  const [currentPage, setCurrentPage] = useState(1);
 				  const [totalPages, setTotalPages] = useState(0);
 			
-					  const t = translations[lang];
-					  const { user } = useUser();
-					  const anyUser = user as any;
-					  const { openSignIn } = useClerk();
-					  const credits = (anyUser?.privateMetadata?.credits as number | undefined) ?? null;
+				  const t = translations[lang];
 
 			  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 	    const selectedFile = e.target.files?.[0];
@@ -226,16 +221,11 @@ export function HomePage({ lang }: { lang: Language }) {
 	    setResult(null);
 			  };
 
-				  const handleAnalyze = async (modelType: 'default' = 'default') => {
-		    if (!file) return;
-		
-		    // Require sign-in before starting analysis
-		    if (!user) {
-		      openSignIn?.({});
-		      return;
-		    }
-		
-		    setAnalyzing(true);
+					  const handleAnalyze = async (modelType: 'default' = 'default') => {
+	    	    if (!file) return;
+	   		
+	   		    // Authentication is not required for analysis in the current low-volume phase.
+	   		    setAnalyzing(true);
     setError('');
     setCurrentPage(1);
 
@@ -268,35 +258,27 @@ export function HomePage({ lang }: { lang: Language }) {
 			
 		      clearInterval(interval);
 			
-		      if (!res.ok) {
-		        let message = t.defaultErrorMessage;
-		
-		        // 413：文件体积超过 Next/代理的上传上限，给出明确提示
-		        if (res.status === 413) {
-		          message =
-		            lang === 'zh'
-		              ? '文件太大，超过当前在线版本的上传大小上限。建议控制在 100MB 以内，或拆分为多个文件后再上传。'
-		              : 'File is too large for the current online version. Please keep it under 100MB or split it into multiple documents.';
-		        } else {
-		          try {
-		            const errorData = await res.json();
-		            // 专门处理 402：积分不足，给出友好提示
-		            if (res.status === 402) {
-		              const current = errorData?.credits ?? 0;
-		              const required = errorData?.required ?? undefined;
-		              message =
-		                lang === 'zh'
-		                  ? `积分不足，本次分析${required ? `需要 ${required} 积分，` : ''}当前余额 ${current}。请充值 / 联系我。`
-		                  : `Insufficient credits. This analysis${required ? ` requires ${required} credits,` : ''} you currently have ${current}. Please top up or contact us.`;
-		            } else if (errorData?.error) {
-		              message = errorData.error;
-		            }
-		          } catch {
-		            // ignore JSON parse error, fallback to 默认提示
-		          }
-		        }
-		        throw new Error(message);
-		      }
+			      if (!res.ok) {
+			        let message = t.defaultErrorMessage;
+			
+			        // 413：文件体积超过 Next/代理的上传上限，给出明确提示
+			        if (res.status === 413) {
+			          message =
+			            lang === 'zh'
+			              ? '文件太大，超过当前在线版本的上传大小上限。建议控制在 100MB 以内，或拆分为多个文件后再上传。'
+			              : 'File is too large for the current online version. Please keep it under 100MB or split it into multiple documents.';
+			        } else {
+			          try {
+			            const errorData = await res.json();
+			            if (errorData?.error) {
+			              message = errorData.error;
+			            }
+			          } catch {
+			            // ignore JSON parse error, fallback to 默认提示
+			          }
+			        }
+			        throw new Error(message);
+			      }
 	
 	      const data = await res.json();
       setTotalPages(data.total_pages);
@@ -376,53 +358,7 @@ export function HomePage({ lang }: { lang: Language }) {
 		                  {t.langSwitchEn}
 		                </Link>
 				              </div>
-              {/* 桌面端：积分 + 登录区 */}
-              <div className="hidden md:flex items-center gap-3 text-sm">
-                <SignedOut>
-                  <div className="flex items-center gap-2">
-                    <SignInButton mode="modal">
-                      <Button variant="outline" size="sm">
-                        {lang === 'zh' ? '登录' : 'Sign in'}
-                      </Button>
-                    </SignInButton>
-                    <SignUpButton mode="modal">
-                      <Button variant="outline" size="sm">
-                        {lang === 'zh' ? '注册' : 'Sign up'}
-                      </Button>
-                    </SignUpButton>
-                  </div>
-                </SignedOut>
-                <SignedIn>
-                  {typeof credits === 'number' && (
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
-                      {lang === 'zh'
-                        ? `余额 ${credits} 积分`
-                        : `${credits} credits`}
-                    </span>
-                  )}
-                  <UserButton afterSignOutUrl="/" />
-                </SignedIn>
-              </div>
-              {/* 手机端：显示登录 + 注册按钮或头像 */}
-              <div className="flex md:hidden items-center gap-2">
-                <SignedOut>
-                  <div className="flex items-center gap-2">
-                    <SignInButton mode="modal">
-                      <Button variant="outline" size="sm">
-                        {lang === 'zh' ? '登录' : 'Sign in'}
-                      </Button>
-                    </SignInButton>
-                    <SignUpButton mode="modal">
-                      <Button variant="outline" size="sm">
-                        {lang === 'zh' ? '注册' : 'Sign up'}
-                      </Button>
-                    </SignUpButton>
-                  </div>
-                </SignedOut>
-                <SignedIn>
-                  <UserButton afterSignOutUrl="/" />
-                </SignedIn>
-              </div>
+			            {/* 顶部右侧目前不展示登录 / 积分信息，保留为空，后续需要时可再开启 */}
 		            </div>
 		          </div>
 		        </div>
@@ -477,38 +413,34 @@ export function HomePage({ lang }: { lang: Language }) {
 			                    Security First: GDPR Compliant &amp; Data Encryption.
 			                  </p>
 			                  
-				          {error && (
-				            <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 flex items-start gap-2">
-					              <AlertCircle className="h-5 w-5 text-rose-600 mt-0.5" />
-					              <div className="text-sm text-rose-700 space-y-2">
-					                <p>{error}</p>
-					                {(error.startsWith('积分不足') || error.startsWith('Insufficient credits')) && (
-					                  <>
-					                    <a
-						                      href="mailto:edwin.z.w@qq.com"
-						                      className="inline-block underline underline-offset-2 text-rose-800 hover:text-rose-900"
-						                    >
-						                      {lang === 'zh'
-						                        ? '点击这里给我发邮件：edwin.z.w@qq.com'
-						                        : 'Click here to email me: edwin.z.w@qq.com'}
-						                    </a>
-						                    <div className="pt-1">
-						                      <p className="text-xs mb-1">
-						                        {lang === 'zh'
-						                          ? '也可以微信扫码联系我：'
-						                          : 'Or scan this WeChat QR code to contact me:'}
-						                      </p>
-						                      <img
-						                        src="/wechat-qr.png"
-						                        alt="WeChat QR code"
-						                        className="h-20 w-20 rounded-md border border-rose-200 bg-white"
-						                      />
-						                    </div>
-						                  </>
-						                )}
-					              </div>
-					            </div>
-				          )}
+			          {error && (
+			            <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 flex items-start gap-2">
+				              <AlertCircle className="h-5 w-5 text-rose-600 mt-0.5" />
+				              <div className="text-sm text-rose-700 space-y-2">
+				                <p>{error}</p>
+				                <a
+					                  href="mailto:edwin.z.w@qq.com"
+					                  className="inline-block underline underline-offset-2 text-rose-800 hover:text-rose-900"
+					                >
+					                  {lang === 'zh'
+					                    ? '点击这里给我发邮件：edwin.z.w@qq.com'
+					                    : 'Click here to email me: edwin.z.w@qq.com'}
+					                </a>
+					                <div className="pt-1">
+					                  <p className="text-xs mb-1">
+					                    {lang === 'zh'
+					                      ? '也可以微信扫码联系我：'
+					                      : 'Or scan this WeChat QR code to contact me:'}
+					                  </p>
+					                  <img
+					                    src="/wechat-qr.png"
+					                    alt="WeChat QR code"
+					                    className="h-20 w-20 rounded-md border border-rose-200 bg-white"
+					                  />
+					                </div>
+				              </div>
+				            </div>
+			          )}
 			
 			                  {/* 仅保留单一模型按钮（Gemini 2.5 Flash） */}
 			                  <div className="space-y-3">

@@ -1,4 +1,4 @@
-import { AIResponse, BidComparisonItem, BidComparisonSummary, ComplianceMatrixItem, ErrorItem, Language } from '@/types';
+import { AIResponse, BidComparisonItem, BidComparisonSummary, BidDraft, ComplianceMatrixItem, ErrorItem, Language } from '@/types';
 import { logger } from '@/lib/logger';
 
 /**
@@ -184,6 +184,77 @@ export async function extractComplianceMatrix(
 			throw error;
 		}
 	}
+
+		/**
+		 * 根据招标文件全文，生成一份投标文件草稿（不返回 JSON，直接返回正文文本）
+		 */
+		export async function generateBidDraftFromRfp(
+			rfpText: string,
+			modelType: string = 'default',
+			lang: Language = 'zh',
+		): Promise<BidDraft> {
+			const apiKey = process.env.OPENROUTER_API_KEY;
+
+			if (!apiKey) {
+				throw new Error('OPENROUTER_API_KEY is not configured');
+			}
+
+			// 控制提示词长度，避免上下文过长
+			const MAX_RFP_CHARS = 80000;
+			const truncated = rfpText.substring(0, MAX_RFP_CHARS);
+			const prompt = buildBidDraftPrompt(truncated, lang);
+
+			// 与其他功能共用模型映射
+			const modelMap: Record<string, string> = {
+				default: 'google/gemini-2.5-flash',
+				gpt5: 'openai/gpt-5',
+				gemini3: 'google/gemini-3-pro-preview',
+				claude35: 'anthropic/claude-3.5-sonnet',
+			};
+			const model = modelMap[modelType] || modelMap.default;
+
+			try {
+				const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${apiKey}`,
+						// Header 只能使用 ASCII 字符
+						'HTTP-Referer': 'https://rfpai.io',
+						'X-Title': 'CrossCheck Bid Draft Generator',
+					},
+					body: JSON.stringify({
+						model,
+						messages: [
+							{
+								role: 'user',
+								content: prompt,
+							},
+						],
+						// 稍微提高 temperature，让生成文案更有“人味”，但仍保持一定稳定性
+						temperature: 0.5,
+						max_tokens: 7000,
+					}),
+				});
+
+				if (!response.ok) {
+					const errorText = await response.text();
+					throw new Error(`OpenRouter API error (bid-draft): ${response.status} - ${errorText}`);
+				}
+
+				const data = await response.json();
+				const aiResponse = data.choices[0].message.content as string;
+				logger.debug('gemini: bid-draft AI response preview', {
+					preview: aiResponse.substring(0, 500),
+				});
+				return { content: aiResponse };
+			} catch (error) {
+				logger.error('gemini: bid-draft API call failed', {
+					error: (error as Error)?.message,
+				});
+				throw error;
+			}
+		}
 
 /**
  * 调用 OpenRouter API (Gemini)
@@ -544,10 +615,69 @@ ${bidText}`;
 ${requirementsJson}
 
 ### 投标文件全文（已截断）
-${bidText}`;
+			${bidText}`;
+		}
+
+	/**
+	 * 构建根据 RFP 生成投标文件草稿 Prompt
+	 */
+	function buildBidDraftPrompt(rfpText: string, lang: Language): string {
+		if (lang === 'en') {
+			return `You are a senior bid/proposal writer working for a bidder.
+
+You will receive the main content of an RFP (Request for Proposal). Based on this RFP, draft a **full proposal document** in English.
+
+Requirements:
+1. Use formal, professional proposal language.
+2. Structure the document with clear sections, for example:
+   - Executive Summary
+   - Understanding of Requirements
+   - Overall Solution Approach
+   - Technical Solution
+   - Project Management & Implementation Plan
+   - Service, Support & SLAs
+   - Compliance & Risk Mitigation
+   - Commercial/Business Terms response (high-level, no specific prices)
+3. Do not simply copy the RFP text. Instead, **rephrase and respond** from the bidder's perspective while aligning with the RFP.
+4. You may use Markdown headings (#, ##, ###) to structure the document so it can be easily copied into Word.
+5. Highlight how the proposed solution addresses key evaluation criteria or scoring points if they can be inferred from the RFP.
+
+Now read the following RFP text and output the **complete proposal draft** as continuous text (Markdown is OK). Do NOT output JSON or any extra explanations.
+
+----- BEGIN RFP TEXT -----
+${rfpText}
+----- END RFP TEXT -----`;
+		}
+
+		// 中文 Prompt
+		return `你是一名经验非常丰富的投标文件编写专家，代表投标人撰写方案。
+
+你将收到一份招标文件（RFP）的主要内容，请基于这些信息，生成一份**中文投标文件草稿**。
+
+要求：
+1. 使用正式、书面化的中文投标语言，不要口语化。
+2. 整体结构建议至少包含（可根据需要调整）：
+   - 封面标题（可简要写在开头）
+   - 投标函及总体承诺
+   - 项目背景与理解
+   - 总体技术方案
+   - 详细技术方案（按功能模块或子系统分节）
+   - 实施计划与项目管理（里程碑、进度安排、项目团队等）
+   - 培训与服务保障 / 运维与售后服务
+   - 商务条款响应（可作原则性响应，不需要具体报价数值）
+   - 风险分析与承诺
+3. 不要机械地逐条复制 RFP 原文，而是要站在投标人的视角，对关键要求进行归纳、响应和优化表述。
+4. 可以使用 Markdown 一级/二级标题来分节，方便后续复制到 Word。
+5. 如果从 RFP 文本中可以看出明确的评分点或关键指标，请在方案中有意识地加以强调。
+
+现在请根据下面的招标文件文本，直接输出完整的投标文件草稿正文（不要输出 JSON，也不要输出解释性说明）：
+
+----- 开始招标文件文本 -----
+${rfpText}
+----- 结束招标文件文本 -----`;
 	}
 
-/**
+	/**
 	 * 解析 AI 返回的合规矩阵 JSON
 	 */
 function parseComplianceMatrixResponse(aiResponse: string): { items: ComplianceMatrixItem[] } {

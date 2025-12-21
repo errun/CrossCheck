@@ -1,21 +1,21 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 // 默认视为「中文地区」的国家/地区代码
 const CHINESE_REGIONS = ["CN", "HK", "MO", "TW"] as const;
 
-// 使用 Clerk 中间件，并在其中根据 IP 做基础的语言跳转
+// 基于 IP 做基础的语言跳转
 // 需求：如果是中文地区 IP 且没有明确的语言偏好，则优先使用中文路径（/zh ...）
-export default clerkMiddleware((auth, req) => {
-	const url = req.nextUrl;
+export function middleware(req: NextRequest) {
+		const url = req.nextUrl;
 	const pathname = url.pathname;
 
 	// 只对页面路由做语言跳转，跳过 API/TRPC 等
-	const isApiRoute = pathname.startsWith("/api") || pathname.startsWith("/trpc");
-	if (isApiRoute) {
-		console.log("[middleware-lang] skip api route", { pathname });
-		return;
-	}
+			const isApiRoute = pathname.startsWith("/api") || pathname.startsWith("/trpc");
+			if (isApiRoute) {
+				console.log("[middleware-lang] skip api route", { pathname });
+				return NextResponse.next();
+			}
 
 	const geoCountry = req.geo?.country;
 	const headerCountry = req.headers.get("x-vercel-ip-country");
@@ -74,29 +74,25 @@ export default clerkMiddleware((auth, req) => {
 		return res;
 	}
 
-	// 第三层：英文入口路径下，记录英文偏好
-	if (isEnglishRoot && langCookie !== "en") {
+			// 第三层：英文入口路径下，记录英文偏好
+			if (isEnglishRoot && langCookie !== "en") {
 		console.log("[middleware-lang] set lang=en", { pathname, country, prevLang: langCookie });
 			const requestHeaders = new Headers(req.headers);
 			requestHeaders.set("x-app-lang", "en");
 			const res = NextResponse.next({ request: { headers: requestHeaders } });
 		res.cookies.set("lang", "en", { path: "/", maxAge: 60 * 60 * 24 * 365 });
 		return res;
-	}
+			}
 
-	// 其他情况交给 Clerk 默认逻辑处理
-	return;
-});
+			// 其他情况：不做语言跳转，直接放行请求
+			return NextResponse.next();
+		}
 
 export const config = {
 	matcher: [
-		// Recommended Clerk matcher for Next.js App Router:
-		// - Skip all Next.js internals (`_next`)
-		// - Skip all files that have an extension (static assets)
-		//   so that things like `/_next/static/css/app/layout.css` are not
-		//   processed by the middleware. This prevents CSS/JS from 404-ing in dev.
-		"/((?!.+\\.[\\w]+$|_next).*)",
-		// Always run for API routes
-		"/(api|trpc)(.*)",
+			// Skip Next.js internals (`_next`) and static files with extensions
+			"/((?!.+\\.[\\w]+$|_next).*)",
+			// Always run for API/TRPC routes as well
+			"/(api|trpc)(.*)",
 	],
 };

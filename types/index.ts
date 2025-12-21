@@ -68,5 +68,11 @@ export interface BidComparisonSummary {
 	missing: number;
 }
 
+// 根据 RFP 自动生成的投标文件草稿
+export interface BidDraft {
+	// 完整的投标文本（可以是 Markdown / 纯文本）
+	content: string;
+}
+
 // 界面与服务端共用的语言类型
 export type Language = 'zh' | 'en';

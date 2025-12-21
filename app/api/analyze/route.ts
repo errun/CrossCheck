@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
 import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
 import { analyzeWithGemini, extractComplianceMatrix } from '@/lib/gemini';
@@ -26,25 +25,15 @@ export async function POST(request: NextRequest) {
 		    const lang: Language = langValue === 'en' ? 'en' : 'zh';
 		    const mode = (formData.get('mode') as string) || 'scan';
 
-    if (!file) {
-      logger.warn('analyze: missing file payload');
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      );
-    }
-
-	    // --- Credit system: require authenticated user and charge credits based on file size ---
-	    const { userId } = await auth();
-	    if (!userId) {
-	      logger.warn('analyze: unauthenticated access');
+	    if (!file) {
+	      logger.warn('analyze: missing file payload');
 	      return NextResponse.json(
-	        { error: 'You must be signed in to analyze documents.' },
-	        { status: 401 }
+	        { error: 'No file provided' },
+	        { status: 400 }
 	      );
 	    }
 
-    const fileName = file.name || '';
+	    const fileName = file.name || '';
     const lowerName = fileName.toLowerCase();
     const mimeType = file.type || '';
 
@@ -65,8 +54,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-	    // 检查文件大小（默认 100MB）
-	    const maxSize = parseInt(process.env.MAX_FILE_SIZE || '104857600');
+	    	// 检查文件大小（默认 100MB）
+	    	const maxSize = parseInt(process.env.MAX_FILE_SIZE || '104857600');
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: `File size exceeds ${maxSize / 1024 / 1024}MB limit` },
@@ -74,66 +63,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-		    // 计算本次调用需要消耗的积分：10 credits / 10MB（向上取整，最少 10 积分）
-			    const totalBytes = file.size;
-			    const sizeInMB = totalBytes / (1024 * 1024);
-			    const blocks = Math.max(1, Math.ceil(sizeInMB / 10));
-			    const cost = blocks * 10;
-		
-			    // 读取当前用户积分（从 privateMetadata），不足则返回 402
-			    const clerk = await clerkClient();
-			    const user = await clerk.users.getUser(userId);
-			    const privateMetadata = (user.privateMetadata || {}) as Record<string, any>;
-			    // 如果用户还没有 credits 字段（新注册，webhook 可能尚未生效），默认给一部分初始积分
-			    const DEFAULT_INITIAL_CREDITS = 200;
-			    const currentCredits =
-			      typeof privateMetadata.credits === 'number'
-			        ? privateMetadata.credits
-			        : DEFAULT_INITIAL_CREDITS;
-
-	    if (currentCredits < cost) {
-	      logger.warn('analyze: insufficient credits', {
-	        userId,
-	        required: cost,
-	        currentCredits,
-	        fileName,
-	      });
-	      return NextResponse.json(
-	        {
-	          error: 'Insufficient credits',
-	          credits: currentCredits,
-	          required: cost,
-	        },
-	        { status: 402 }
-	      );
-	    }
-
-	    const newBalance = currentCredits - cost;
-	    await clerk.users.updateUserMetadata(userId, {
-	      privateMetadata: {
-	        ...privateMetadata,
-	        credits: newBalance,
-	      },
-	      // 同步到 publicMetadata，前端导航可以直接读取并展示余额
-	      publicMetadata: {
-	        ...(user.publicMetadata as Record<string, any>),
-	        credits: newBalance,
-	      },
-	    });
-
-	    logger.info('analyze: request accepted', {
-	      userId,
-	      fileName,
-	      mimeType,
-	      fileSize: file.size,
-	      lang,
-	      modelType,
-	      mode,
-	      cost,
-	      remainingCredits: newBalance,
-	    });
-
-    // 1. 生成 doc_id
+	    	    // NOTE: Authentication and credit charging are temporarily disabled for low-volume testing.
+	    	    logger.info('analyze: request accepted', {
+	    	      fileName,
+	    	      mimeType,
+	    	      fileSize: file.size,
+	    	      lang,
+	    	      modelType,
+	    	      mode,
+	    	    });
+	    	
+	    	    // 1. 生成 doc_id
     const docId = crypto.randomUUID();
 
     // 2. 保存原始文件到临时目录

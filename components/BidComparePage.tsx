@@ -20,29 +20,15 @@ import {
 	TableHead,
 	TableCell,
 } from "@/components/ui/table";
-import type { BidComparisonItem, BidComparisonSummary, Language } from "@/types";
-import {
-	SignedIn,
-	SignedOut,
-	SignInButton,
-	SignUpButton,
-	UserButton,
-	useUser,
-	useClerk,
-} from "@clerk/nextjs";
+	import type { BidComparisonItem, BidComparisonSummary, Language } from "@/types";
 
-export default function BidComparePage({ lang }: { lang: Language }) {
-	const [rfpFile, setRfpFile] = useState<File | null>(null);
-	const [bidFile, setBidFile] = useState<File | null>(null);
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState<string>("");
-	const [items, setItems] = useState<BidComparisonItem[]>([]);
-	const [summary, setSummary] = useState<BidComparisonSummary | null>(null);
-
-	const { user } = useUser();
-	const anyUser = user as any;
-	const { openSignIn } = useClerk();
-	const credits = (anyUser?.privateMetadata?.credits as number | undefined) ?? null;
+	export default function BidComparePage({ lang }: { lang: Language }) {
+		const [rfpFile, setRfpFile] = useState<File | null>(null);
+		const [bidFile, setBidFile] = useState<File | null>(null);
+		const [loading, setLoading] = useState(false);
+		const [error, setError] = useState<string>("");
+		const [items, setItems] = useState<BidComparisonItem[]>([]);
+		const [summary, setSummary] = useState<BidComparisonSummary | null>(null);
 
 	const handleFileChange = (
 		e: React.ChangeEvent<HTMLInputElement>,
@@ -74,16 +60,11 @@ export default function BidComparePage({ lang }: { lang: Language }) {
 		setSummary(null);
 	};
 
-	const handleCompare = async () => {
-		if (!rfpFile || !bidFile) return;
-
-		// 需要先登录
-		if (!user) {
-			openSignIn?.({});
-			return;
-		}
-
-		setLoading(true);
+		const handleCompare = async () => {
+			if (!rfpFile || !bidFile) return;
+		
+			// Authentication is not required for bid comparison in the current low-volume phase.
+			setLoading(true);
 		setError("");
 		setItems([]);
 		setSummary(null);
@@ -100,35 +81,28 @@ export default function BidComparePage({ lang }: { lang: Language }) {
 				body: formData,
 			});
 
-			if (!res.ok) {
-				let message: string;
-				let data: any = null;
-				try {
-					data = await res.json();
-				} catch {}
+				if (!res.ok) {
+					let message: string;
+					let data: any = null;
+					try {
+						data = await res.json();
+					} catch {}
 
-				if (res.status === 402) {
-					const current = data?.credits ?? 0;
-					const required = data?.required ?? undefined;
-					message =
-						lang === "zh"
-							? `积分不足，本次对比${required ? `需要 ${required} 积分，` : ""}当前余额 ${current}。请充值 / 联系我。`
-							: `Insufficient credits. This comparison${required ? ` requires ${required} credits,` : ""} you currently have ${current}. Please top up or contact us.`;
-				} else if (res.status === 413) {
-					message =
-						lang === "zh"
-							? "文件太大，超过当前在线版本的上传大小上限。建议控制在 100MB 以内，或拆分为多个文件后再上传。"
-							: "File is too large for the current online version. Please keep each file under 100MB or split it into multiple documents.";
-				} else {
-					message =
-						data?.error ||
-						(lang === "zh"
-							? "对比失败，请稍后重试"
-							: "Comparison failed, please try again later");
+					if (res.status === 413) {
+						message =
+							lang === "zh"
+								? "文件太大，超过当前在线版本的上传大小上限。建议控制在 100MB 以内，或拆分为多个文件后再上传。"
+								: "File is too large for the current online version. Please keep each file under 100MB or split it into multiple documents.";
+					} else {
+						message =
+							data?.error ||
+							(lang === "zh"
+								? "对比失败，请稍后重试"
+								: "Comparison failed, please try again later");
+					}
+
+					throw new Error(message);
 				}
-
-				throw new Error(message);
-			}
 
 			const data = await res.json();
 			setItems((data.items || []) as BidComparisonItem[]);
@@ -144,9 +118,6 @@ export default function BidComparePage({ lang }: { lang: Language }) {
 		}
 	};
 
-	const isCreditsError =
-		error.includes("Insufficient credits") || error.includes("积分不足");
-
 	return (
 		<div className="min-h-screen bg-slate-50">
 			<div className="container mx-auto px-4 py-8 space-y-8">
@@ -160,51 +131,7 @@ export default function BidComparePage({ lang }: { lang: Language }) {
 						<span>{lang === "zh" ? "返回首页" : "Back to home"}</span>
 					</Link>
 					<div className="flex items-center gap-4">
-						{/* 桌面端：积分 + 登录区 */}
-						<div className="hidden md:flex items-center gap-3 text-sm">
-							<SignedOut>
-								<div className="flex items-center gap-2">
-									<SignInButton mode="modal">
-										<Button variant="outline" size="sm">
-											{lang === "zh" ? "登录" : "Sign in"}
-										</Button>
-									</SignInButton>
-									<SignUpButton mode="modal">
-										<Button variant="outline" size="sm">
-											{lang === "zh" ? "注册" : "Sign up"}
-										</Button>
-									</SignUpButton>
-								</div>
-							</SignedOut>
-							<SignedIn>
-								{typeof credits === "number" && (
-									<span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
-										{lang === "zh" ? `余额 ${credits} 积分` : `${credits} credits`}
-									</span>
-								)}
-								<UserButton afterSignOutUrl="/" />
-							</SignedIn>
-						</div>
-						{/* 移动端：显示登录 + 注册入口 */}
-						<div className="flex md:hidden items-center gap-2">
-							<SignedOut>
-								<div className="flex items-center gap-2">
-									<SignInButton mode="modal">
-										<button className="px-3 py-1 rounded-full text-sm border border-slate-300 bg-white text-slate-700">
-											{lang === "zh" ? "登录" : "Sign in"}
-										</button>
-									</SignInButton>
-									<SignUpButton mode="modal">
-										<button className="px-3 py-1 rounded-full text-sm border border-slate-300 bg-white text-slate-700">
-											{lang === "zh" ? "注册" : "Sign up"}
-										</button>
-									</SignUpButton>
-								</div>
-							</SignedOut>
-							<SignedIn>
-								<UserButton afterSignOutUrl="/" />
-							</SignedIn>
-						</div>
+					{/* 右侧暂不显示登录 / 积分信息，后续如需可再开启 */}
 					</div>
 				</div>
 
@@ -316,20 +243,10 @@ export default function BidComparePage({ lang }: { lang: Language }) {
 								{lang === "zh" ? "开始对比" : "Compare documents"}
 							</span>
 						</Button>
-						<p className="text-xs text-slate-500">
-							{lang === "zh"
-								? "按两份文件合计大小计费，约每 10MB 扣 15 积分。"
-								: "Credits are charged based on the combined size of both files (around 15 credits per 10MB)."}
-						</p>
+						<p className="text-xs text-slate-500"></p>
 					</div>
 					{error && (
-						<div
-							className={`text-xs md:text-sm rounded-md px-3 py-2 border ${
-								isCreditsError
-									? "border-amber-300 bg-amber-50 text-amber-800"
-									: "border-red-200 bg-red-50 text-red-700"
-							}`}
-						>
+						<div className="text-xs md:text-sm rounded-md px-3 py-2 border border-red-200 bg-red-50 text-red-700">
 							{error}
 						</div>
 					)}
