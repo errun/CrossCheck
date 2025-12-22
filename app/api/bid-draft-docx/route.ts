@@ -80,28 +80,29 @@ export async function POST(request: NextRequest) {
 	        continue;
 	      }
 
-	      // 解析 Markdown 标题为 Word 标题（Heading 级别）
-	      const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
-	      if (headingMatch) {
-	        const level = headingMatch[1].length;
-	        const text = headingMatch[2].trim() || ' ';
-	        let headingLevel: HeadingLevel | undefined;
-	        if (level === 1) headingLevel = HeadingLevel.HEADING_1;
-	        else if (level === 2) headingLevel = HeadingLevel.HEADING_2;
-	        else if (level === 3) headingLevel = HeadingLevel.HEADING_3;
-	        else if (level === 4) headingLevel = HeadingLevel.HEADING_4;
-	        else if (level === 5) headingLevel = HeadingLevel.HEADING_5;
-	        else headingLevel = HeadingLevel.HEADING_6;
+		      // 解析 Markdown 标题为 Word 标题（Heading 级别）
+		      const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+		      if (headingMatch) {
+		        const level = headingMatch[1].length;
+		        const text = headingMatch[2].trim() || ' ';
+		        // 这里让 TypeScript 通过赋值推断 headingLevel 的类型，避免直接把 HeadingLevel 当作类型使用
+		        let headingLevel;
+		        if (level === 1) headingLevel = HeadingLevel.HEADING_1;
+		        else if (level === 2) headingLevel = HeadingLevel.HEADING_2;
+		        else if (level === 3) headingLevel = HeadingLevel.HEADING_3;
+		        else if (level === 4) headingLevel = HeadingLevel.HEADING_4;
+		        else if (level === 5) headingLevel = HeadingLevel.HEADING_5;
+		        else headingLevel = HeadingLevel.HEADING_6;
 
-	        children.push(
-	          new Paragraph({
-	            text,
-	            heading: headingLevel,
-	          }),
-	        );
-	        index += 1;
-	        continue;
-	      }
+		        children.push(
+		          new Paragraph({
+		            text,
+		            heading: headingLevel,
+		          }),
+		        );
+		        index += 1;
+		        continue;
+		      }
 
 	      // 默认按普通段落处理
 	      children.push(new Paragraph(line || ' '));
@@ -117,24 +118,27 @@ export async function POST(request: NextRequest) {
 	      ],
 	    });
 
-	    const buffer = await Packer.toBuffer(doc);
+		    const buffer = await Packer.toBuffer(doc);
+		    // Next.js Route Handler 的 Response Body 需要符合 DOM BodyInit 类型；
+		    // 这里将 Node.js Buffer 显式转换为 Uint8Array，避免类型不兼容报错。
+		    const uint8Array = new Uint8Array(buffer);
 
 	    // HTTP 头里的 Content-Disposition 只能使用 ASCII/Latin-1 字符；
 	    // 这里统一使用英文文件名，真正下载下来的文件名由前端 a.download 控制（可以是中文）。
 	    const headerFileName = 'bid-draft.docx';
 
-    logger.info('bid-draft-docx: generated docx', {
-      contentLength: content.length,
-      bufferLength: buffer.byteLength,
-      requestDurationMs: Date.now() - requestStartedAt,
-    });
-
-	    return new NextResponse(buffer, {
+		    logger.info('bid-draft-docx: generated docx', {
+		      contentLength: content.length,
+		      bufferLength: buffer.byteLength,
+		      requestDurationMs: Date.now() - requestStartedAt,
+		    });
+		
+		    return new NextResponse(uint8Array, {
 	      status: 200,
 	      headers: {
 	        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 	        'Content-Disposition': `attachment; filename="${headerFileName}"`,
-	        'Content-Length': buffer.byteLength.toString(),
+		        'Content-Length': buffer.byteLength.toString(),
 	      },
 	    });
   } catch (error: any) {
