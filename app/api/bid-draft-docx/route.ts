@@ -106,11 +106,16 @@ function cmToTwip(cm: number): number {
 function createTableRowFromMarkdown(
   raw: string,
   isHeader: boolean,
-  options?: { fontSizeHalfPoints?: number; emptyColumnIndexes?: number[] },
+	  options?: {
+	    fontSizeHalfPoints?: number;
+	    emptyColumnIndexes?: number[];
+	    fontName?: string;
+	  },
 ): TableRow {
   const cells = parseMarkdownRowCells(raw);
   const fontSizeHalfPoints = options?.fontSizeHalfPoints;
   const emptyColumnIndexes = options?.emptyColumnIndexes ?? [];
+  const fontName = options?.fontName;
 
   return new TableRow({
 	    height: { value: DEFAULT_TABLE_ROW_HEIGHT, rule: HeightRule.ATLEAST },
@@ -129,10 +134,11 @@ function createTableRowFromMarkdown(
             alignment: AlignmentType.CENTER,
             children: [
               new TextRun({
-	                text: normalized || ' ',
-	                bold: isHeader,
-	                size: fontSizeHalfPoints,
-	                color: '000000',
+			            text: normalized || ' ',
+			            bold: isHeader,
+			            size: fontSizeHalfPoints ?? 24, // 默认小四号：12pt = 24 half-points
+			            color: '000000',
+			            font: fontName,
               }),
             ],
           }),
@@ -232,17 +238,88 @@ export async function POST(request: NextRequest) {
 	      }
 	    }
 
-			    // 先扫一遍正文，收集需要出现在目录里的标题（这里只收集 # 和 ##）
-			    const tocEntries: { level: number; text: string }[] = [];
-			    for (const rawLine of lines) {
-			      const m = rawLine.trim().match(/^(#{1,6})\s+(.*)$/);
-			      if (!m) continue;
-			      const level = m[1].length;
-			      if (level > 2) continue;
-			      const text = normalizePlaceholders(m[2]).trim();
-			      if (!text) continue;
-			      tocEntries.push({ level, text });
-			    }
+	    // 再额外处理中文封面顶部常见的“正本 / 副本”字样：
+	    // 如果它出现在正文最前面（在第一个非空行），则直接从导出的 Word 中移除，
+	    // 避免在封面最上方单独占一行。
+	    if (lang === 'zh') {
+	      let firstNonEmptyIndex = 0;
+	      while (firstNonEmptyIndex < lines.length && !lines[firstNonEmptyIndex]!.trim()) {
+	        firstNonEmptyIndex += 1;
+	      }
+	      if (firstNonEmptyIndex < lines.length) {
+	        const firstLineNormalized = lines[firstNonEmptyIndex]!
+	          .trim()
+	          .replace(/\s+/g, '');
+	        if (firstLineNormalized === '正本' || firstLineNormalized === '副本') {
+	          lines.splice(firstNonEmptyIndex, 1);
+	        }
+	      }
+	    }
+
+				    // 统一的标题识别：同时支持 Markdown 标题（#、## 等）和中文“第×章”“一、二、三……”样式
+				    const detectHeadingFromLine = (
+				      trimmedLine: string,
+				    ): { level: number; text: string } | null => {
+				      if (!trimmedLine) return null;
+
+				      // 1）优先识别 Markdown 标题（# 开头）
+				      const markdownMatch = trimmedLine.match(/^(#{1,6})\s+(.*)$/);
+				      if (markdownMatch) {
+				        const levelFromHashes = markdownMatch[1].length;
+				        const rawText = markdownMatch[2];
+				        const text = normalizePlaceholders(rawText).trim() || ' ';
+				        if (!text) return null;
+
+				        if (lang === 'zh') {
+				          const normalized = text.trim();
+				          // 形如“第一章 ……”，无论 # 数量多少，都视为一级标题
+				          if (/^第[一二三四五六七八九十]+章/.test(normalized)) {
+				            return { level: 1, text };
+				          }
+				          // 形如“一、投标函”“二、商务条款”这类大标题，统一视为二级标题
+				          if (/^[一二三四五六七八九十]+[、.．]/.test(normalized)) {
+				            return { level: 2, text };
+				          }
+				        }
+
+				        return { level: levelFromHashes, text };
+				      }
+
+				      // 2）无 # 前缀时，对中文样式标题做兜底识别
+				      if (lang === 'zh') {
+				        const normalized = trimmedLine.trim();
+				        if (/^第[一二三四五六七八九十]+章/.test(normalized)) {
+				          const text = normalizePlaceholders(normalized).trim() || ' ';
+				          if (!text) return null;
+				          return { level: 1, text };
+				        }
+				        if (/^[一二三四五六七八九十]+[、.．]/.test(normalized)) {
+				          const text = normalizePlaceholders(normalized).trim() || ' ';
+				          if (!text) return null;
+				          return { level: 2, text };
+				        }
+				      }
+
+				      return null;
+				    };
+
+				    // 先扫一遍正文，收集需要出现在目录里的标题（支持 # / ## 以及“第×章”“一、二、三……”）
+				    const tocEntries: { level: number; text: string }[] = [];
+				    const seenTocKeys = new Set<string>();
+				    for (const rawLine of lines) {
+				      const trimmedLine = rawLine.trim();
+				      if (!trimmedLine) continue;
+				      const headingInfo = detectHeadingFromLine(trimmedLine);
+				      if (!headingInfo) continue;
+				      const { level, text } = headingInfo;
+				      if (level > 2) continue;
+				      const normalizedText = text.trim();
+				      if (!normalizedText) continue;
+				      const key = `${level}::${normalizedText.replace(/\s+/g, '')}`;
+				      if (seenTocKeys.has(key)) continue;
+				      seenTocKeys.add(key);
+				      tocEntries.push({ level, text: normalizedText });
+				    }
 			    // 过滤掉不希望出现在目录中的封面类标题：
 			    // 1）顶层的“正本 / 副本”等封面字样；
 			    // 2）形如“项目名称：xxx”“招标编号：xxx”的项目基础信息行（这些内容只在正文中保留，不出现在目录里）。
@@ -252,15 +329,39 @@ export async function POST(request: NextRequest) {
 			      if (entry.level === 1 && (normalizedText === '正本' || normalizedText === '副本')) {
 			        return false;
 			      }
-			      // “项目名称：……”“招标编号：……” 这种行不出现在目录中
+			      // “项目名称：……”"招标编号：……” 这种行不出现在目录中
 			      const trimmed = entry.text.trim();
 			      if (/^项目名称[:：]/.test(trimmed) || /^招标编号[:：]/.test(trimmed)) {
 			        return false;
 			      }
+			      // 中文场景下，再额外过滤掉：
+			      // 1）类似“XXX项目”这类封面项目全称（通常是一级标题，且不以“第×章”开头）；
+			      // 2）“投标文件”“投标文件（正本/副本）”这类封面字样；
+			      // 3）形如“第四章投标文件格式”这样的 RFP 模板章节标题，不希望出现在目录中。
+			      if (lang === 'zh') {
+			        // 1）封面项目名称：“XXX项目”（但排除“第一章 项目概况”这类正式章节）
+			        const isCoverProjectTitle =
+			          entry.level === 1 &&
+			          !/^第[一二三四五六七八九十]+章/.test(normalizedText) &&
+			          /项目$/.test(normalizedText);
+			        if (isCoverProjectTitle) {
+			          return false;
+			        }
+
+			        // 2）“投标文件”“投标文件正本/副本”
+			        if (/^投标文件(正本|副本)?$/.test(normalizedText)) {
+			          return false;
+			        }
+
+			        // 3）“第×章 投标文件格式”一类模板章节
+			        if (/^第[一二三四五六七八九十]+章.*投标文件格式/.test(normalizedText)) {
+			          return false;
+			        }
+			      }
 			      return true;
 			    });
 
-			    const children: (Paragraph | Table)[] = [];
+				    const children: (Paragraph | Table)[] = [];
 
 		    // 先插入一个醒目的“目录”标题（纯静态文字，不参与自动目录计算）
 		    children.push(
@@ -312,27 +413,63 @@ export async function POST(request: NextRequest) {
 			      );
 			    }
 
-			    // 正文从新的一页开始，目录页单独占一页
-			    children.push(
-			      new Paragraph({
-			        children: [],
-			        pageBreakBefore: true,
-			      }),
-			    );
+				    // 注意：不再在目录末尾额外插入一个仅带 pageBreakBefore 的空段落，
+				    // 避免在正文第一页顶部出现多余的“空白行”。章节是否起新页，交由各自的标题
+				    // 的 pageBreakBefore 逻辑控制（例如 “第×章 投标文件格式” 单独起页等）。
 
-	    let index = 0;
-    let currentHeadingText = '';
+		    let index = 0;
+		    let currentHeadingText = '';
+		    // 记录上一条标题信息，便于在中文场景下控制分页（例如：
+		    // “第四章 投标文件格式” 与紧随其后的 “一、投标函” 保持在同一页）。
+		    // 这里不强依赖 docx 的 HeadingLevel 类型定义，使用 any 即可满足等值判断需求。
+		    let previousHeadingLevel: any = null;
+		    let previousHeadingTextNormalized: string | null = null;
 
     while (index < lines.length) {
       const line = lines[index] ?? '';
       const trimmed = line.trim();
 
-      // 空行：输出一个空段落，避免 Word 把所有内容挤在一起
-      if (!trimmed) {
-        children.push(new Paragraph(' '));
-        index += 1;
-        continue;
-      }
+	      // 忽略章节之间用于分隔的 “---” / "____" 等水平线，只在 Markdown 中起分割作用，不需要出现在 Word 正文里
+	      const isHorizontalRule = (() => {
+	        if (!trimmed) return false;
+	        const stripped = trimmed.replace(/[-_—\s]/g, '');
+	        return stripped.length === 0 && /[-_—]/.test(trimmed) && trimmed.length >= 3;
+	      })();
+	      if (isHorizontalRule) {
+	        index += 1;
+	        continue;
+	      }
+
+	      // 空行处理：
+	      // 1）普通段落之间保留一个空行，对应一个空段落；
+	      // 2）但如果后面紧跟的是 Markdown 标题（# 开头），则不在标题上方再插入空行，
+	      //    避免在 Word 中出现“标题上方多出一行空白”的效果。
+	      if (!trimmed) {
+	        // 向后查找下一个非空行
+	        let lookahead = index + 1;
+	        while (lookahead < lines.length) {
+	          const laLine = lines[lookahead] ?? '';
+	          const laTrimmed = laLine.trim();
+	          if (!laTrimmed) {
+	            lookahead += 1;
+	            continue;
+	          }
+	          // 如果下一个真正有内容的行是标题，则丢弃当前这条空行
+	          if (/^(#{1,6})\s+/.test(laTrimmed)) {
+	            index += 1;
+	            break;
+	          }
+	          // 否则，这是段落之间的普通空行，保留一个空段落
+	          children.push(new Paragraph(' '));
+	          index += 1;
+	          break;
+	        }
+	        // 如果已经到文末（后面没有任何非空行），则不再额外插入空段落
+	        if (lookahead >= lines.length) {
+	          index += 1;
+	        }
+	        continue;
+	      }
 
       // Markdown 标题 -> Word 标题
       const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
@@ -362,20 +499,64 @@ export async function POST(request: NextRequest) {
 	          headingLevel = HeadingLevel.HEADING_6;
 	        }
 
-        children.push(
-          new Paragraph({
-            heading: headingLevel,
-            alignment: AlignmentType.CENTER,
-            children: [
-              new TextRun({
-	                text,
-	                bold: true,
-	                size: headingFontSize,
-	                color: '000000',
-              }),
-            ],
-          }),
-        );
+		        // 中文场景下，细致控制章节分页：
+		        // 1）“第×章 投标文件格式” 这一类章节标题单独起页；
+		        // 2）紧跟在该章节标题后的第一个“一、投标函”不再单独起页，
+		        //    避免出现“第四章 投标文件格式”在上一页、“一、投标函”在下一页的割裂效果；
+		        // 3）其它“一、二、三……”这类大标题仍然从新的一页开始。
+		        let pageBreakBefore = false;
+		        if (lang === 'zh') {
+	          const normalizedNoSpace = text.trim().replace(/\s+/g, '');
+	
+	          // 1）“第×章 投标文件格式” 单独起页
+	          if (
+	            headingLevel === HeadingLevel.HEADING_1 &&
+	            /^第[一二三四五六七八九十]+章.*投标文件格式/.test(normalizedNoSpace)
+	          ) {
+	            pageBreakBefore = true;
+	          }
+	
+	          // 2）“一、二、三……”大章节：除非紧跟在“第×章 投标文件格式”后面，否则单独起页
+	          if (headingLevel === HeadingLevel.HEADING_2) {
+	            const normalizedHeadingText = text.trim();
+	            const isChineseMainSection =
+	              /^[一二三四五六七八九十]+[、.．]/.test(normalizedHeadingText);
+	            if (isChineseMainSection) {
+	              const prevIsBidFormatChapter =
+	                previousHeadingLevel === HeadingLevel.HEADING_1 &&
+	                !!previousHeadingTextNormalized &&
+	                /^第[一二三四五六七八九十]+章.*投标文件格式/.test(
+	                  previousHeadingTextNormalized,
+	                );
+	
+	              // 紧跟在“第×章 投标文件格式”后的第一个“一、投标函”与章节标题同页，其余仍然起新页
+	              if (!prevIsBidFormatChapter) {
+	                pageBreakBefore = true;
+	              }
+	            }
+		          }
+		        }
+
+		        children.push(
+		          new Paragraph({
+		            heading: headingLevel,
+		            alignment: AlignmentType.CENTER,
+		            pageBreakBefore,
+		            children: [
+		              new TextRun({
+		                text,
+		                bold: true,
+		                size: headingFontSize,
+		                color: '000000',
+		                font: lang === 'en' ? 'Calibri' : ' ',
+		              }),
+		            ],
+		          }),
+		        );
+
+	        // 记录当前标题，供后续标题的分页逻辑使用
+	        previousHeadingLevel = headingLevel;
+	        previousHeadingTextNormalized = text.trim().replace(/\s+/g, '');
 
         index += 1;
         continue;
@@ -541,7 +722,9 @@ export async function POST(request: NextRequest) {
               );
             }
 
-            const headerRow = createTableRowFromMarkdown(headerRaw, true);
+	            const headerRow = createTableRowFromMarkdown(headerRaw, true, {
+	              fontName: lang === 'en' ? 'Calibri' : '宋体',
+	            });
 	
 	            // 过滤掉整行都是 "..." / "…" 的占位行（例如表格最后一行的省略号），不导出到 Word
 	            const filteredBodyRaw = bodyRaw.filter((rawRow) => {
@@ -554,15 +737,17 @@ export async function POST(request: NextRequest) {
 	              return !allEllipsis;
 	            });
 	
-	            const bodyRows = filteredBodyRaw.map((rawRow) =>
-	              createTableRowFromMarkdown(rawRow, false, {
-	                // 只有分项报价表的内容行使用小五字号（9pt => 18 half-points）
-	                fontSizeHalfPoints: isBidItemTable ? 18 : undefined,
-	                // 分项报价表中“品牌”列内容全部留空，方便用户手填
-	                emptyColumnIndexes:
-	                  isBidItemTable && brandColumnIndex >= 0 ? [brandColumnIndex] : [],
-	              }),
-	            );
+		            const bodyRows = filteredBodyRaw.map((rawRow) =>
+		              createTableRowFromMarkdown(rawRow, false, {
+		                // 只有分项报价表的内容行使用小五字号（9pt => 18 half-points），
+		                // 其它表格默认为小四字号（12pt => 24 half-points）。
+		                fontSizeHalfPoints: isBidItemTable ? 18 : 24,
+		                // 分项报价表中“品牌”列内容全部留空，方便用户手填
+		                emptyColumnIndexes:
+		                  isBidItemTable && brandColumnIndex >= 0 ? [brandColumnIndex] : [],
+		                fontName: lang === 'en' ? 'Calibri' : '宋体',
+		              }),
+		            );
 
             const tableWidth = isBidItemTable
               ? { size: cmToTwip(15.44), type: WidthType.DXA }
@@ -606,9 +791,10 @@ export async function POST(request: NextRequest) {
 	          },
 	          children: [
 	            new TextRun({
-		              text: paragraphText || ' ',
-		              size: 24, // 小四号：12pt = 24 half-points
-		              color: '000000',
+			              text: paragraphText || ' ',
+			              size: 24, // 小四号：12pt = 24 half-points
+			              color: '000000',
+			              font: lang === 'en' ? 'Calibri' : '\u5b8b\u4f53',
 	            }),
 	          ],
 	        });
@@ -624,9 +810,10 @@ export async function POST(request: NextRequest) {
 	          },
 	          children: [
 	            new TextRun({
-		              text: paragraphText || ' ',
-		              size: 24,
-		              color: '000000',
+			              text: paragraphText || ' ',
+			              size: 24,
+			              color: '000000',
+			              font: lang === 'en' ? 'Calibri' : '\u5b8b\u4f53',
 	            }),
 	          ],
 	        });
@@ -642,20 +829,26 @@ export async function POST(request: NextRequest) {
 	          },
 	          children: [
 	            new TextRun({
-		              text: '年    月    日',
-		              size: 24,
-		              color: '000000',
+			              text: '年    月    日',
+			              size: 24,
+			              color: '000000',
+			              font: lang === 'en' ? 'Calibri' : '\u5b8b\u4f53',
 	            }),
 	          ],
 	        });
-	      } else {
-	        // 4）其他普通段落：保持原样
+		      } else {
+		        // 4）其他普通段落：统一使用小四号字号，并根据语言设置中文/英文字体
 		        paragraph = new Paragraph({
 		          children: [
-		            new TextRun({ text: paragraphText || ' ', color: '000000' }),
+		            new TextRun({
+		              text: paragraphText || ' ',
+		              color: '000000',
+		              size: 24, // 小四号
+		              font: lang === 'en' ? 'Calibri' : '\u5b8b\u4f53',
+		            }),
 		          ],
 		        });
-	      }
+		      }
 
 	      children.push(paragraph);
       index += 1;
