@@ -639,14 +639,15 @@ Requirements:
    - Compliance & Risk Mitigation
    - Commercial/Business Terms response (high-level, no specific prices)
 3. Do not simply copy the RFP text. Instead, **rephrase and respond** from the bidder's perspective while aligning with the RFP.
-4. You may use Markdown headings (#, ##, ###) to structure the document so it can be easily copied into Word.
-5. Highlight how the proposed solution addresses key evaluation criteria or scoring points if they can be inferred from the RFP.
-
-Now read the following RFP text and output the **complete proposal draft** as continuous text (Markdown is OK). Do NOT output JSON or any extra explanations.
-
------ BEGIN RFP TEXT -----
-${rfpText}
------ END RFP TEXT -----`;
+		4. You may use Markdown headings (#, ##, ###) to structure the document so it can be easily copied into Word.
+		5. Highlight how the proposed solution addresses key evaluation criteria or scoring points if they can be inferred from the RFP.
+		6. **Do NOT add any meta-intro sentences** such as "This is the generated bid draft" or "Below is the proposal". The **first line of your output must already be part of the proposal itself** (for example, a cover page title or the first section heading).
+		
+		Now read the following RFP text and output the **complete proposal draft** as continuous text (Markdown is OK). Do NOT output JSON or any extra explanations, and do not prepend any additional commentary before the proposal.
+		
+		----- BEGIN RFP TEXT -----
+		${rfpText}
+		----- END RFP TEXT -----`;
 		}
 
 				// 中文 Prompt：面向招投标场景的专家级投标文件生成
@@ -791,7 +792,8 @@ ${rfpText}
 - 以 [TENDER_DOC] 为唯一事实依据；
 - 结构严格服从“投标文件格式”章节；
 - 价格一律使用“[待填]”占位；
-- 无法确定的信息一律使用“[需用户填写]”占位。
+		- 无法确定的信息一律使用“[需用户填写]”占位；
+		- **正文开头不要出现诸如“这里是为您生成的投标文件草稿”“以下是投标文件草稿”等提示性语句，输出的第一行必须直接是投标文件正文内容本身（如“正本”“第一章 …… ”等）**。
 
 ----- 开始招标文件 [TENDER_DOC] 原文 -----
 ${rfpText}
