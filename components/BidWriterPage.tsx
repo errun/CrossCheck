@@ -8,6 +8,626 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Language } from "@/types";
 
+type HeadingInfo = { level: number; text: string };
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// 与后端 Word 导出保持一致的占位符/标记清理逻辑（简化版，输出为纯文本）
+function normalizePlaceholders(text: string): string {
+  const trimmed = text.trim();
+
+  if (
+    trimmed === "[待填]" ||
+    trimmed === "【待填】" ||
+    trimmed === "待填" ||
+    trimmed === "[需用户填写]" ||
+    trimmed === "【需用户填写】" ||
+    trimmed === "需用户填写" ||
+    trimmed === "(需用户填写)" ||
+    trimmed === "（需用户填写）" ||
+    trimmed === "[填]" ||
+    trimmed === "【填】" ||
+    trimmed === "(填)" ||
+    trimmed === "（填）"
+  ) {
+    return "";
+  }
+
+  let result = text;
+
+  // 去掉常见占位符本身
+  result = result
+    .replace(/\[待填\]/g, "")
+    .replace(/【待填】/g, "")
+    .replace(/待填/g, "")
+    .replace(/\[需用户填写\]/g, "")
+    .replace(/【需用户填写】/g, "")
+    .replace(/需用户填写/g, "")
+    .replace(/\(需用户填写\)/g, "")
+    .replace(/（需用户填写）/g, "")
+    .replace(/\[填\]/g, "")
+    .replace(/【填】/g, "")
+    .replace(/\(填\)/g, "")
+    .replace(/（填）/g, "");
+
+  // 去掉 Markdown 粗体/斜体星号
+  result = result.replace(/\*\*(.*?)\*\*/g, "$1");
+  result = result.replace(/\*(.*?)\*/g, "$1");
+
+  // 去掉“√”号，保证勾选默认不打勾
+  result = result.replace(/√/g, "");
+
+  // 清理 <br> 换行标签
+  result = result.replace(/<br\s*\/??>/gi, " ");
+
+  // 标准日期区间格式更易读
+  result = result.replace(
+    /(\d{4}[./]\d{1,2})\s*[-—~]\s*(\d{4}[./]\d{1,2})/g,
+    "$1    -    $2",
+  );
+
+  return result;
+}
+
+function detectHeadingFromLine(line: string, lang: Language): HeadingInfo | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+
+  // 优先识别 Markdown 标题（# 开头）
+  const markdownMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+  if (markdownMatch) {
+    const levelFromHashes = markdownMatch[1].length;
+    const rawText = markdownMatch[2];
+    const text = normalizePlaceholders(rawText).trim() || " ";
+    if (!text) return null;
+
+    if (lang === "zh") {
+      const normalized = text.trim();
+      // 形如“第一章 ……”，无论 # 数量多少，都视为一级标题
+      if (/^第[一二三四五六七八九十]+章/.test(normalized)) {
+        return { level: 1, text };
+      }
+      // 形如“一、投标函”“二、商务条款”等大标题，统一视为二级标题
+      if (/^[一二三四五六七八九十]+[、.．]/.test(normalized)) {
+        return { level: 2, text };
+      }
+    }
+
+    return { level: levelFromHashes, text };
+  }
+
+  // 无 # 前缀时，对中文样式标题做兜底识别
+  if (lang === "zh") {
+    const normalized = trimmed;
+    if (/^第[一二三四五六七八九十]+章/.test(normalized)) {
+      const text = normalizePlaceholders(normalized).trim() || " ";
+      if (!text) return null;
+      return { level: 1, text };
+    }
+    if (/^[一二三四五六七八九十]+[、.．]/.test(normalized)) {
+      const text = normalizePlaceholders(normalized).trim() || " ";
+      if (!text) return null;
+      return { level: 2, text };
+    }
+  }
+
+  return null;
+}
+
+function parseMarkdownRowCells(raw: string): string[] {
+  return raw
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function isMarkdownTableSeparatorRow(raw: string): boolean {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("|")) return false;
+  const inner = trimmed.slice(1, trimmed.endsWith("|") ? -1 : undefined).trim();
+  if (!inner) return false;
+  const cells = inner.split("|").map((cell) => cell.trim());
+  if (cells.length === 0) return false;
+  return cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
+function buildPrintableHtml(draft: string, lang: Language): string {
+  let lines = draft.split(/\r?\n/);
+
+  // ===== 与 Word 导出尽量对齐的预处理：删除开头提示语 & "正本/副本" =====
+  if (lang === "zh") {
+    let firstContentLineIndex = 0;
+    let removedIntroLines = 0;
+
+    while (firstContentLineIndex < lines.length) {
+      const raw = lines[firstContentLineIndex] ?? "";
+      const trimmed = raw.trim();
+
+      if (!trimmed) {
+        firstContentLineIndex += 1;
+        removedIntroLines += 1;
+        continue;
+      }
+
+      const normalized = trimmed.replace(/\s+/g, "");
+      const looksLikeIntro =
+        normalized.startsWith("这里是为您生成的投标文件草稿") ||
+        normalized.startsWith("这是为您生成的投标文件草稿") ||
+        normalized.startsWith("以下是为您生成的投标文件草稿") ||
+        (normalized.includes("投标文件草稿") && normalized.includes("[TENDER_DOC]"));
+
+      if (looksLikeIntro) {
+        firstContentLineIndex += 1;
+        removedIntroLines += 1;
+        continue;
+      }
+
+      if (
+        removedIntroLines > 0 &&
+        !trimmed.startsWith("#") &&
+        !/^(第[一二三四五六七八九十]+章)/.test(trimmed)
+      ) {
+        firstContentLineIndex += 1;
+        removedIntroLines += 1;
+        continue;
+      }
+
+      break;
+    }
+
+    if (firstContentLineIndex > 0) {
+      lines = lines.slice(firstContentLineIndex);
+    }
+
+    // 处理最顶部的“正本 / 副本”字样
+    let firstNonEmptyIndex = 0;
+    while (firstNonEmptyIndex < lines.length && !lines[firstNonEmptyIndex]!.trim()) {
+      firstNonEmptyIndex += 1;
+    }
+    if (firstNonEmptyIndex < lines.length) {
+      const firstLineNormalized = lines[firstNonEmptyIndex]!
+        .trim()
+        .replace(/\s+/g, "");
+      if (firstLineNormalized === "正本" || firstLineNormalized === "副本") {
+        lines.splice(firstNonEmptyIndex, 1);
+      }
+    }
+  }
+
+  // ===== 目录：与 Word 类似的标题识别 + 过滤 =====
+  type TocEntry = { level: number; text: string };
+  const rawTocEntries: TocEntry[] = [];
+  const seenTocKeys = new Set<string>();
+
+  for (const rawLine of lines) {
+    const trimmedLine = rawLine.trim();
+    if (!trimmedLine) continue;
+    const headingInfo = detectHeadingFromLine(trimmedLine, lang);
+    if (!headingInfo) continue;
+    const { level, text } = headingInfo;
+    if (level > 2) continue;
+    const normalizedText = text.trim();
+    if (!normalizedText) continue;
+    const key = `${level}::${normalizedText.replace(/\s+/g, "")}`;
+    if (seenTocKeys.has(key)) continue;
+    seenTocKeys.add(key);
+    rawTocEntries.push({ level, text: normalizedText });
+  }
+
+  const tocEntries: TocEntry[] = rawTocEntries.filter((entry) => {
+    const normalizedText = entry.text.replace(/\s+/g, "").replace(/[()（）]/g, "");
+    // 过滤封面“正本/副本”
+    if (entry.level === 1 && (normalizedText === "正本" || normalizedText === "副本")) {
+      return false;
+    }
+    // 过滤“项目名称：xxx”“招标编号：xxx”
+    const trimmed = entry.text.trim();
+    if (/^项目名称[:：]/.test(trimmed) || /^招标编号[:：]/.test(trimmed)) {
+      return false;
+    }
+    if (lang === "zh") {
+      // 1）封面项目名称：“XXX项目”
+      const isCoverProjectTitle =
+        entry.level === 1 &&
+        !/^第[一二三四五六七八九十]+章/.test(normalizedText) &&
+        /项目$/.test(normalizedText);
+      if (isCoverProjectTitle) return false;
+
+      // 2）“投标文件”“投标文件正本/副本”
+      if (/^投标文件(正本|副本)?$/.test(normalizedText)) return false;
+
+      // 3）“第×章 投标文件格式”模板章节
+      if (/^第[一二三四五六七八九十]+章.*投标文件格式/.test(normalizedText)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const bodyParts: string[] = [];
+  let index = 0;
+  let currentHeadingText = "";
+  let previousHeadingWasBidFormatChapter = false;
+
+  while (index < lines.length) {
+    const line = lines[index] ?? "";
+    const trimmed = line.trim();
+
+    // 水平分隔线（--- / ___ 等）在 Word 里通常不会单独作为一行正文导出，这里直接跳过
+    const isHorizontalRule = (() => {
+      if (!trimmed) return false;
+      const stripped = trimmed.replace(/[-_—\s]/g, "");
+      return stripped.length === 0 && /[-_—]/.test(trimmed) && trimmed.length >= 3;
+    })();
+    if (isHorizontalRule) {
+      index += 1;
+      continue;
+    }
+
+    // 空行：如果后面紧跟的是标题，则不在标题上方额外插入空段落
+    if (!trimmed) {
+      let lookahead = index + 1;
+      while (lookahead < lines.length) {
+        const laLine = lines[lookahead] ?? "";
+        const laTrimmed = laLine.trim();
+        if (!laTrimmed) {
+          lookahead += 1;
+          continue;
+        }
+        if (detectHeadingFromLine(laTrimmed, lang)) {
+          index += 1;
+          break;
+        }
+        bodyParts.push('<p class="empty-line">&nbsp;</p>');
+        index += 1;
+        break;
+      }
+      if (lookahead >= lines.length) {
+        index += 1;
+      }
+      continue;
+    }
+
+    // 标题行（与 Word 保持相同的分页逻辑）
+    const heading = detectHeadingFromLine(trimmed, lang);
+    if (heading) {
+      const { level, text } = heading;
+      currentHeadingText = text;
+      const normalizedNoSpace = text.replace(/\s+/g, "");
+
+      let tag: "h1" | "h2" | "h3" | "h4" = "h3";
+      if (level === 1) tag = "h1";
+      else if (level === 2) tag = "h2";
+      else if (level >= 3) tag = "h3";
+
+      const classes: string[] = [tag];
+      let isBidFormatChapter = false;
+
+      if (lang === "zh") {
+        // “第×章 投标文件格式” 单独起页
+        if (
+          level === 1 &&
+          /^第[一二三四五六七八九十]+章.*投标文件格式/.test(normalizedNoSpace)
+        ) {
+          classes.push("page-break-before");
+          isBidFormatChapter = true;
+        }
+
+        // “一、二、三……”等大章节：除非紧跟在“第×章 投标文件格式”后面，否则单独起页
+        if (level === 2 && /^[一二三四五六七八九十]+[、.．]/.test(text.trim())) {
+          if (!previousHeadingWasBidFormatChapter) {
+            classes.push("page-break-before");
+          }
+        }
+      }
+
+      bodyParts.push(
+        `<${tag} class="${classes.join(" ")}">${escapeHtml(
+          normalizePlaceholders(text),
+        )}</${tag}>`,
+      );
+
+      previousHeadingWasBidFormatChapter = isBidFormatChapter;
+      index += 1;
+      continue;
+    }
+
+    // Markdown 表格：支持普通表格 + 报价类表格的特殊逻辑
+    if (line.includes("|")) {
+      const tableLines: string[] = [];
+      while (index < lines.length && (lines[index] ?? "").includes("|")) {
+        tableLines.push(lines[index] ?? "");
+        index += 1;
+      }
+
+      const tableRowsRaw = tableLines
+        .map((raw) => raw.trim())
+        .filter((raw) => raw.length > 0)
+        .filter((raw) => !isMarkdownTableSeparatorRow(raw));
+
+      if (tableRowsRaw.length > 0) {
+        const [headerRaw, ...bodyRaw] = tableRowsRaw;
+        const headerCells = parseMarkdownRowCells(headerRaw);
+
+        const headingKey = currentHeadingText.replace(/\s/g, "");
+        const isBidPriceTable = headingKey.includes("投标报价表");
+        const isBidItemTable = headingKey.includes("分项报价表");
+
+        const htmlEscapeCells = (cells: string[]) =>
+          cells.map((cell) => escapeHtml(normalizePlaceholders(cell) || "&nbsp;"));
+
+        if (isBidPriceTable) {
+          // “投标报价表”：参照 Word 导出逻辑，把关键行留空/模板化
+          const rowsHtml: string[] = [];
+
+          for (const rawRow of tableRowsRaw) {
+            const cells = parseMarkdownRowCells(rawRow);
+            const labelRaw = cells[0] ?? "";
+            const valueRaw = cells[1] ?? "";
+            const labelText = normalizePlaceholders(labelRaw) || " ";
+            const labelKey = labelText.replace(/\s/g, "");
+            const normalizedValue = normalizePlaceholders(valueRaw);
+
+            let rightContent: string;
+
+            if (labelKey.includes("投标报价")) {
+              rightContent =
+                "小写：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;元<br/>大写：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;元";
+            } else if (labelKey.includes("保证金情况")) {
+              rightContent = "□有&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;□无";
+            } else if (labelKey.includes("备注")) {
+              rightContent =
+                "税率：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%（注：若是小微企业，请在此注明）";
+            } else if (labelKey.includes("交货期") || labelKey.includes("售后服务承诺")) {
+              rightContent = "&nbsp;";
+            } else {
+              rightContent = escapeHtml(normalizedValue || " ");
+            }
+
+            rowsHtml.push(
+              `<tr><td class="bid-table-label">${escapeHtml(
+                labelText,
+              )}</td><td class="bid-table-value">${rightContent}</td></tr>`,
+            );
+          }
+
+          bodyParts.push(
+            `<table class="bid-table bid-price-table"><tbody>${rowsHtml.join(
+              "",
+            )}</tbody></table>`,
+          );
+        } else {
+          // 其它表格，包括分项报价表
+          let brandColumnIndex = -1;
+          if (isBidItemTable && headerCells.length > 0) {
+            brandColumnIndex = headerCells.findIndex((cell) =>
+              cell.replace(/\s/g, "").includes("品牌"),
+            );
+          }
+
+          const headerHtmlCells = htmlEscapeCells(headerCells);
+
+          const filteredBodyRaw = bodyRaw.filter((rawRow) => {
+            const cells = parseMarkdownRowCells(rawRow);
+            if (cells.length === 0) return false;
+            const allEllipsis = cells.every((cell) => {
+              const t = normalizePlaceholders(cell).replace(/\s/g, "");
+              return t === "..." || t === "…";
+            });
+            return !allEllipsis;
+          });
+
+          const bodyRowsHtml: string[] = [];
+
+          for (const rawRow of filteredBodyRaw) {
+            const cells = parseMarkdownRowCells(rawRow);
+            const htmlCells = cells.map((cell, idx) => {
+              if (isBidItemTable && brandColumnIndex >= 0 && idx === brandColumnIndex) {
+                return "&nbsp;";
+              }
+              return escapeHtml(normalizePlaceholders(cell) || "&nbsp;");
+            });
+            bodyRowsHtml.push(
+              `<tr>${htmlCells.map((c) => `<td>${c}</td>`).join("")}</tr>`,
+            );
+          }
+
+          bodyParts.push(
+            `<table class="bid-table ${
+              isBidItemTable ? "bid-item-table" : ""
+            }"><thead><tr>${headerHtmlCells
+              .map((c) => `<th>${c}</th>`)
+              .join("")}</tr></thead><tbody>${bodyRowsHtml.join(
+              "",
+            )}</tbody></table>`,
+          );
+        }
+      }
+
+      continue;
+    }
+
+    // 普通段落：根据内容类型调整样式，使之更接近 Word 导出
+    const paragraphText = normalizePlaceholders(line);
+    const matchKey = (paragraphText || "").replace(/\s/g, "");
+
+    // 签字 / 盖章 / 公章 / 盖单位章 行
+    const isSignatureLabel =
+      (matchKey.includes("盖章") ||
+        matchKey.includes("签字") ||
+        matchKey.includes("公章") ||
+        matchKey.includes("盖单位章")) &&
+      matchKey.length <= 30;
+
+    if (isSignatureLabel) {
+      bodyParts.push(
+        `<p class="signature-line">${escapeHtml(paragraphText || " ")}</p>`,
+      );
+      index += 1;
+      continue;
+    }
+
+    // “日期：  年  月  日” 类行
+    if (matchKey.includes("日期") && matchKey.includes("年月日")) {
+      bodyParts.push(
+        `<p class="date-line">${escapeHtml(paragraphText || " ")}</p>`,
+      );
+      index += 1;
+      continue;
+    }
+
+    // 只有“年  月  日”的日期行
+    if (matchKey === "年月日") {
+      bodyParts.push(
+        `<p class="date-only-line">年&nbsp;&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;&nbsp;日</p>`,
+      );
+      index += 1;
+      continue;
+    }
+
+    // 其他普通段落
+    bodyParts.push(`<p>${escapeHtml(paragraphText || " ")}</p>`);
+    index += 1;
+  }
+
+  const fontFamily =
+    lang === "en"
+      ? "Calibri, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+      : "'SimSun', '宋体', 'Microsoft YaHei', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+  const tocTitle = lang === "zh" ? "目录" : "Table of Contents";
+
+  const tocHtml = tocEntries.length
+    ? `<div class="toc-page">
+  <h1 class="toc-title">${escapeHtml(tocTitle)}</h1>
+  <div class="toc-items">
+    ${tocEntries
+      .map(
+        (entry) =>
+          `<div class="toc-item level${entry.level}">${escapeHtml(
+            entry.text,
+          )}</div>`,
+      )
+      .join("\n    ")}
+  </div>
+</div>
+<div class="page-break"></div>`
+    : "";
+
+  return `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+  <meta charset="utf-8" />
+  <title>${
+    lang === "zh" ? "投标文件草稿 - PDF 导出" : "Bid draft - PDF export"
+  }</title>
+  <style>
+    @page { margin: 2cm; }
+    body {
+      font-family: ${fontFamily};
+      font-size: 12pt;
+      line-height: 1.6;
+      color: #000;
+      margin: 0;
+      padding: 2cm;
+    }
+    h1, h2, h3, h4 {
+      font-weight: bold;
+      margin: 0 0 12pt;
+    }
+    h1 {
+      font-size: 22pt;
+      text-align: center;
+      margin-top: 24pt;
+    }
+    h2 {
+      font-size: 18pt;
+      margin-top: 18pt;
+    }
+    h3 {
+      font-size: 14pt;
+      margin-top: 14pt;
+    }
+    p {
+      margin: 0 0 8pt;
+    }
+    p.empty-line {
+      margin: 0 0 4pt;
+    }
+    p.signature-line {
+      margin: 12pt 0 14pt;
+      line-height: 1.6;
+    }
+    p.date-line {
+      margin: 12pt 0 14pt;
+      line-height: 1.6;
+    }
+    p.date-only-line {
+      text-align: right;
+      margin: 12pt 0 12pt;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12pt 0;
+    }
+    th, td {
+      border: 1px solid #000;
+      padding: 4pt 6pt;
+      font-size: 11pt;
+      vertical-align: middle;
+    }
+    th {
+      background: #f5f5f5;
+    }
+    .bid-table-label {
+      width: 25%;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .bid-table-value {
+      width: 75%;
+    }
+    .toc-title {
+      font-size: 24pt;
+      text-align: center;
+      margin-bottom: 18pt;
+    }
+    .toc-item {
+      margin-bottom: 6pt;
+    }
+    .toc-item.level1 {
+      font-size: 16pt;
+      font-weight: bold;
+    }
+    .toc-item.level2 {
+      font-size: 14pt;
+      margin-left: 1.5em;
+    }
+    .page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+    @media print {
+      body { padding: 1.5cm; }
+    }
+  </style>
+</head>
+<body>
+${tocHtml}
+${bodyParts.join("\n")}
+</body>
+</html>`;
+}
+
 export default function BidWriterPage({ lang }: { lang: Language }) {
   const [rfpFile, setRfpFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -165,6 +785,43 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
       setExporting(false);
     }
   };
+
+	  const handleExportPdf = () => {
+	    if (!draft) return;
+	    try {
+	      const html = buildPrintableHtml(draft, lang);
+	      const printWindow = window.open("", "_blank");
+	      if (!printWindow) {
+	        setError(
+	          lang === "zh"
+	            ? "浏览器拦截了新窗口，无法导出 PDF。请允许弹出窗口后重试。"
+	            : "Popup was blocked by the browser, unable to export PDF. Please allow popups and try again.",
+	        );
+	        return;
+	      }
+
+	      printWindow.document.open();
+	      printWindow.document.write(html);
+	      printWindow.document.close();
+	      printWindow.focus();
+	      // 略微延迟后再触发打印，确保样式已加载
+	      setTimeout(() => {
+	        try {
+	          printWindow.print();
+	        } catch {
+	          // ignore
+	        }
+	      }, 300);
+	    } catch (err: any) {
+	      console.error("Bid writer export pdf error:", err);
+	      setError(
+	        err?.message ||
+	          (lang === "zh"
+	            ? "导出 PDF 失败，请稍后重试。"
+	            : "Failed to export PDF, please try again later."),
+	      );
+	    }
+	  };
 
 		  return (
 	    <div className="min-h-screen bg-slate-50">
@@ -328,6 +985,15 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
                   <ClipboardCopy className="w-4 h-4" />
                   <span>{copied ? (lang === "zh" ? "已复制" : "Copied") : lang === "zh" ? "复制全文" : "Copy all"}</span>
                 </Button>
+	                <Button
+	                  variant="outline"
+	                  size="sm"
+	                  onClick={handleExportPdf}
+	                  className="inline-flex items-center gap-1"
+	                >
+	                  <Download className="w-4 h-4" />
+	                  <span>{lang === "zh" ? "导出为 PDF" : "Export as PDF"}</span>
+	                </Button>
                 <Button
                   variant="outline"
                   size="sm"
