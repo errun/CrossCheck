@@ -13,6 +13,23 @@ export const metadata: Metadata = {
 		"bid management tool",
 		"RFP compliance matrix",
 	],
+	openGraph: {
+		title:
+			"AI Compliance Matrix Generator - Extract RFP Requirements to Excel | RFPAI",
+		description:
+			"Generate a structured compliance matrix from your RFP in seconds. Automatically extract mandatory 'must/shall' requirements into a downloadable Excel checklist.",
+		type: "website",
+		url: "/compliance-matrix",
+		locale: "en_US",
+		siteName: "RFPCheck",
+	},
+	twitter: {
+		card: "summary",
+		title:
+			"AI Compliance Matrix Generator - Extract RFP Requirements to Excel | RFPAI",
+		description:
+			"Generate a structured compliance matrix from your RFP in seconds. Automatically extract mandatory 'must/shall' requirements into a downloadable Excel checklist.",
+	},
 	alternates: {
 		canonical: "/compliance-matrix",
 		languages: {

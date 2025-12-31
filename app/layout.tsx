@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { headers } from "next/headers";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -51,8 +52,11 @@ export const metadata: Metadata = {
 				}: Readonly<{
 				  children: React.ReactNode;
 				}>) {
+			const appLang = headers().get("x-app-lang");
+			const htmlLang = appLang === "zh" ? "zh-Hans" : "en";
+
 				  return (
-			      <html lang="en">
+			      <html lang={htmlLang}>
 			        <body className={`${inter.className} bg-slate-50 text-slate-900`}>
 			          {/* Google Analytics 4 */}
 			          <Script

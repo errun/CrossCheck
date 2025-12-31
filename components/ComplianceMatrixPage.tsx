@@ -57,6 +57,36 @@ export default function ComplianceMatrixPage({
 	  const [commentMap, setCommentMap] = useState<Record<number, string>>({});
 
   const faq = faqContent[lang];
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: faq.q1,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.a1,
+        },
+      },
+      {
+        "@type": "Question",
+        name: faq.q2,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.a2,
+        },
+      },
+      {
+        "@type": "Question",
+        name: faq.q3,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.a3,
+        },
+      },
+    ],
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -147,6 +177,10 @@ export default function ComplianceMatrixPage({
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
 	      <div className="container mx-auto px-4 py-8 space-y-8">
 	        {/* 顶部导航：返回首页 + 语言切换（暂不显示登录 / 积分区域） */}
 	        <div className="flex items-center justify-between max-w-5xl mx-auto mb-4 gap-4">
