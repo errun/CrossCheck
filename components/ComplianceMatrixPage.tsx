@@ -221,8 +221,8 @@ export default function ComplianceMatrixPage({
         <header className="max-w-3xl mx-auto text-center space-y-3">
           <h1 className="text-4xl font-bold text-slate-900">
             {lang === "zh"
-              ? "AI 合规矩阵生成器 (AI Compliance Matrix Generator)"
-              : "AI Compliance Matrix Generator"}
+              ? "AI RFP 合规矩阵生成器 (AI RFP Compliance Matrix Generator)"
+              : "Create an RFP Compliance Matrix in Seconds"}
           </h1>
           <p className="text-xl font-semibold text-blue-700">
             From PDF to Compliance Matrix in 30 Seconds.
@@ -238,6 +238,45 @@ export default function ComplianceMatrixPage({
               : "Compliance matrix generator for RFP requirements"}
           </p>
         </header>
+
+        <section className="max-w-5xl mx-auto grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-900">
+              {lang === "zh"
+                ? "RFP 合规矩阵如何生成"
+                : "How the RFP Compliance Matrix is generated"}
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              {lang === "zh"
+                ? "上传 PDF 或 Word，系统会进行 RFP 拆解（RFP shredding），提取“必须/应当”条款并整理为合规矩阵。"
+                : "Upload a PDF or Word file and the AI performs RFP shredding to extract mandatory must/shall requirements into a structured RFP Compliance Matrix."}
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-900">
+              {lang === "zh"
+                ? "Excel 导出与 proposal 协作"
+                : "Excel checklist for proposal teams"}
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              {lang === "zh"
+                ? "Excel 包含要求原文、章节/页码、合规性和备注，方便 proposal 团队快速定位响应位置。"
+                : "The Excel export includes requirement text, section/page, compliance status, and comments so proposal teams can map responses quickly."}
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate-900">
+              {lang === "zh"
+                ? "合规与风险评估"
+                : "Compliance vs. risk assessment"}
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              {lang === "zh"
+                ? "此页面专注合规矩阵生成，如需投标风险评估与标书分析，请使用 bid checker。"
+                : "This page focuses on compliance matrix generation. For bid risk assessment and deeper proposal analysis, use the bid checker."}
+            </p>
+          </div>
+        </section>
 
         {/* 上传区域 */}
         <Card className="max-w-2xl mx-auto bg-white border border-slate-200 shadow-sm rounded-xl">
@@ -410,6 +449,301 @@ export default function ComplianceMatrixPage({
               </Table>
             </CardContent>
           </Card>
+        )}
+
+        {lang === "en" && (
+          <section
+            className="max-w-5xl mx-auto mt-12"
+            aria-label="Compliance matrix guide"
+          >
+            <div className="space-y-10">
+              <section className="space-y-4">
+                <h2 className="text-2xl font-bold text-slate-900">
+                  What is an RFP Compliance Matrix?
+                </h2>
+                <p className="text-slate-700 leading-relaxed">
+                  A <strong>Compliance Matrix</strong> is a structured table
+                  that maps every mandatory requirement in an RFP to how your
+                  team will respond. In formal bids, the{" "}
+                  <strong>RFP Compliance Matrix</strong> becomes the single
+                  source of truth for what must be answered, where it appears
+                  in the RFP, and which part of the proposal addresses it.
+                  Proposal managers and bid writers rely on it to align scope,
+                  expose gaps early, and keep reviewers focused on what
+                  evaluators will score.
+                </p>
+                <p className="text-slate-700 leading-relaxed">
+                  Most teams build the matrix during{" "}
+                  <strong>Shredding an RFP</strong>, when they scan the document
+                  for obligation language and capture the{" "}
+                  <strong>Must/Shall requirements</strong>. The output is
+                  typically an <strong>Excel compliance checklist</strong> that
+                  supports ownership, status tracking, and evidence collection.
+                  A strong matrix reduces the risk of missing hidden
+                  requirements buried in appendices or special instructions and
+                  keeps the <strong>RFP response process</strong> on schedule.
+                </p>
+                <ul className="list-disc pl-6 text-slate-700 leading-relaxed">
+                  <li>Requirement ID for traceability</li>
+                  <li>Verbatim requirement text and intent</li>
+                  <li>Source section or page reference</li>
+                  <li>Compliance decision (Y/N/Partial)</li>
+                  <li>Response owner, evidence, and notes</li>
+                </ul>
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="text-2xl font-bold text-slate-900">
+                  The Pain of Manual Processing
+                </h2>
+                <p className="text-slate-700 leading-relaxed">
+                  Manual compliance extraction is slow and brittle. Teams often
+                  rely on Ctrl+F to find words like shall, must, or will, then
+                  copy and paste lines into a spreadsheet. When the RFP is 200
+                  pages or includes multiple attachments, this kind of
+                  Shredding an RFP can take hours, and every revision risks
+                  missing a clause or duplicating a requirement.
+                </p>
+                <p className="text-slate-700 leading-relaxed">
+                  Besides the time cost, manual work introduces inconsistency
+                  across reviewers. The same requirement may be paraphrased
+                  differently, and important context can be lost when text is
+                  copied without its section reference. These errors cascade
+                  through the proposal, forcing late rework and creating
+                  compliance risk.
+                </p>
+                <ul className="list-disc pl-6 text-slate-700 leading-relaxed">
+                  <li>Missed requirements after addenda and Q&amp;A updates</li>
+                  <li>Duplicate rows from multiple reviewers</li>
+                  <li>Unclear ownership for compliance decisions</li>
+                  <li>Delayed writing while the matrix is rebuilt</li>
+                </ul>
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="text-2xl font-bold text-slate-900">
+                  Why You Need an Automated Compliance Matrix Generator
+                </h2>
+                <p className="text-slate-700 leading-relaxed">
+                  An AI-powered generator like RFPAI replaces the most tedious
+                  step with automation. Upload a PDF or Word file and the system
+                  converts content from PDF to Excel, producing a structured
+                  matrix in minutes. This is practical{" "}
+                  <strong>Proposal management automation</strong> that helps
+                  teams save time on setup and focus on strategy, positioning,
+                  and win themes.
+                </p>
+
+                <h3 className="text-xl font-semibold text-slate-900 mt-6">
+                  Speed and repeatability
+                </h3>
+                <p className="text-slate-700 leading-relaxed">
+                  Because the AI reads the full document, it extracts every
+                  Must/Shall requirement consistently and returns the same
+                  structure across bids. You can rerun the process when an
+                  addendum arrives and get a refreshed matrix instead of
+                  rebuilding from scratch, which keeps schedules predictable.
+                </p>
+
+                <h3 className="text-xl font-semibold text-slate-900 mt-6">
+                  Accuracy and auditability
+                </h3>
+                <p className="text-slate-700 leading-relaxed">
+                  Automated extraction keeps verbatim requirement text and
+                  references intact, reducing paraphrase errors. Reviewers can
+                  trace each line item back to its source and document why the
+                  team marked it compliant or not. A defensible{" "}
+                  <strong>Compliance Matrix</strong> supports internal reviews
+                  and reduces compliance surprises.
+                </p>
+
+                <h3 className="text-xl font-semibold text-slate-900 mt-6">
+                  Collaboration and accountability
+                </h3>
+                <p className="text-slate-700 leading-relaxed">
+                  The output doubles as an Excel compliance checklist that is
+                  easy to assign to subject matter experts. Columns for owner,
+                  evidence, and status make it clear who responds to each
+                  requirement, and the matrix becomes the shared view for the
+                  whole bid team.
+                </p>
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="text-2xl font-bold text-slate-900">
+                  Key Columns in a Standard Matrix
+                </h2>
+                <p className="text-slate-700 leading-relaxed">
+                  A practical matrix is more than a list of obligations. It is
+                  a living document that lets you filter, sort, and track
+                  progress during the proposal cycle. The columns below are a
+                  solid baseline for any <strong>RFP Compliance Matrix</strong>{" "}
+                  and align well with typical review workflows.
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border border-slate-200 text-sm">
+                    <caption className="caption-bottom text-slate-500 mt-2">
+                      Standard fields used in an Excel compliance checklist
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th className="bg-slate-50 px-3 py-2 text-left font-semibold text-slate-800">
+                          Column
+                        </th>
+                        <th className="bg-slate-50 px-3 py-2 text-left font-semibold text-slate-800">
+                          Purpose
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t border-slate-200">
+                        <td className="px-3 py-2 text-slate-700">
+                          Requirement ID
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">
+                          Unique traceability for every clause
+                        </td>
+                      </tr>
+                      <tr className="border-t border-slate-200">
+                        <td className="px-3 py-2 text-slate-700">
+                          Requirement text
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">
+                          Verbatim requirement from the RFP
+                        </td>
+                      </tr>
+                      <tr className="border-t border-slate-200">
+                        <td className="px-3 py-2 text-slate-700">
+                          Source section/page
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">
+                          Location for reviewer validation
+                        </td>
+                      </tr>
+                      <tr className="border-t border-slate-200">
+                        <td className="px-3 py-2 text-slate-700">
+                          Requirement type
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">
+                          Must, shall, will, or other obligation
+                        </td>
+                      </tr>
+                      <tr className="border-t border-slate-200">
+                        <td className="px-3 py-2 text-slate-700">
+                          Compliance status
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">
+                          Y/N/Partial decision for each line
+                        </td>
+                      </tr>
+                      <tr className="border-t border-slate-200">
+                        <td className="px-3 py-2 text-slate-700">
+                          Response owner
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">
+                          Person or team accountable for response
+                        </td>
+                      </tr>
+                      <tr className="border-t border-slate-200">
+                        <td className="px-3 py-2 text-slate-700">
+                          Proposal reference
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">
+                          Section or evidence that satisfies it
+                        </td>
+                      </tr>
+                      <tr className="border-t border-slate-200">
+                        <td className="px-3 py-2 text-slate-700">
+                          Risks or comments
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">
+                          Notes, assumptions, or clarifications needed
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-slate-700 leading-relaxed">
+                  With these fields, teams can filter by owner, sort by risk,
+                  and create a clear audit trail. The structure also supports
+                  downstream QA, where reviewers validate that each requirement
+                  is addressed in the correct location.
+                </p>
+              </section>
+
+              <section className="space-y-6">
+                <h2 className="text-2xl font-bold text-slate-900">FAQ</h2>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      How does RFPAI perform Shredding an RFP?
+                    </h3>
+                    <p className="mt-2 text-slate-700 leading-relaxed">
+                      The AI scans PDF or Word files for obligation language
+                      like must, shall, will, and required, preserves the exact
+                      sentence, and outputs an Excel-ready matrix with section
+                      references so you move from PDF to Excel quickly.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      Is the Compliance Matrix the same as a checklist?
+                    </h3>
+                    <p className="mt-2 text-slate-700 leading-relaxed">
+                      A checklist lists requirements; a matrix adds ownership,
+                      compliance decisions, and proposal references. That extra
+                      context is why the <strong>Compliance Matrix</strong> is
+                      more useful for audits.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      How should we treat Must/Shall requirements?
+                    </h3>
+                    <p className="mt-2 text-slate-700 leading-relaxed">
+                      Treat them as compliance-critical. Mark Y/N/Partial, add
+                      notes for risks or clarifications, and route unresolved
+                      items to the Q&amp;A log to protect the{" "}
+                      <strong>RFP response process</strong>.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      Who should own the matrix during proposal development?
+                    </h3>
+                    <p className="mt-2 text-slate-700 leading-relaxed">
+                      The proposal manager should maintain the master file
+                      while subject matter experts update assigned rows. This
+                      keeps accountability clear and enables{" "}
+                      <strong>Proposal management automation</strong> across
+                      the team.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      Does automation replace proposal writers?
+                    </h3>
+                    <p className="mt-2 text-slate-700 leading-relaxed">
+                      No. Automation handles extraction and structure, while
+                      writers craft strategy, differentiators, and evidence.
+                      The goal is to save time on busywork, not replace
+                      expertise.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      When should we refresh the matrix?
+                    </h3>
+                    <p className="mt-2 text-slate-700 leading-relaxed">
+                      Re-run it after each amendment, Q&amp;A release, or scope
+                      change. Keeping the Excel compliance checklist current
+                      prevents missed requirements during final reviews.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </section>
         )}
 
         {/* FAQ Section */}
