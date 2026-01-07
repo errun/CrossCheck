@@ -43,18 +43,42 @@ export interface AIResponse {
 	errors: Omit<ErrorItem, 'error_id'>[];
 }
 
-// 合规矩阵条目
-export interface ComplianceMatrixItem {
-	id: number;
-	text: string;
-	page: number;
-	section: string;
+// 合规矩阵统一数据模型（Canonical source of truth）
+export type YesNo = 'Y' | 'N' | '';
+export type ComplianceStatus = 'Y' | 'N' | 'Partial' | '';
+
+export interface MatrixItem {
+	// Common
+	requirementId: string;
+	requirementText: string;
+	sourceSection?: string;
+	responseOwner?: string;
+	proposalVolume?: string;
+	proposalSection?: string;
+	proposalReference?: string;
+	commentsNotes?: string;
+	// Gov-only
+	sourcePage?: number | null;
+	requirementType?: string;
+	complianceStatus?: ComplianceStatus;
+	amendmentId?: string;
+	farDfarsReference?: string;
+	qaReviewed?: YesNo;
+	riskGap?: string;
+	// Enterprise-only
+	customerPriority?: string;
+	responseStrategy?: string;
+	dealStage?: string;
+	legalRiskFlag?: string;
 }
+
+/** @deprecated Legacy alias; use MatrixItem instead. */
+export type ComplianceMatrixItem = MatrixItem;
 
 // 招标要求 vs 投标文件对比条目
 export interface BidComparisonItem {
 	id: number;
-	requirement_id: number;
+	requirement_id: string;
 	requirement_text: string;
 	status: 'covered' | 'partially_covered' | 'missing';
 	evidence: string;

@@ -1,4 +1,14 @@
-import { AIResponse, BidComparisonItem, BidComparisonSummary, BidDraft, ComplianceMatrixItem, ErrorItem, Language } from '@/types';
+import {
+	AIResponse,
+	BidComparisonItem,
+	BidComparisonSummary,
+	BidDraft,
+	ComplianceStatus,
+	ErrorItem,
+	Language,
+	MatrixItem,
+	YesNo,
+} from '@/types';
 import { logger } from '@/lib/logger';
 
 /**
@@ -51,17 +61,24 @@ export async function extractComplianceMatrix(
 	  pdfText: string,
 	  modelType: string = 'default',
 	  lang: Language = 'zh',
-): Promise<{ items: ComplianceMatrixItem[] }> {
+): Promise<{ items: MatrixItem[] }> {
 	  const apiKey = process.env.OPENROUTER_API_KEY;
 
 	  if (!apiKey) {
 	    throw new Error('OPENROUTER_API_KEY is not configured');
 	  }
 
-	  // 合规矩阵目前只对前 80k 字符进行分析，避免提示词过长
-	  const MAX_CHUNK_SIZE = 80000;
-	  const truncated = pdfText.substring(0, MAX_CHUNK_SIZE);
-	  const prompt = buildComplianceMatrixPrompt(truncated, lang);
+	  // 合规矩阵：先截断到一个上限，再进一步分块（避免一次性返回过大响应导致连接中断/超时）
+	  const MAX_MATRIX_INPUT_CHARS = 80000;
+	  const truncated = pdfText.substring(0, MAX_MATRIX_INPUT_CHARS);
+
+	  // 更小的 chunk 能显著降低单次请求的生成时长与返回体积，提高稳定性
+	  const MATRIX_CHUNK_SIZE = 30000;
+	  const MATRIX_CHUNK_OVERLAP = 1000;
+	  const chunks =
+		truncated.length > MATRIX_CHUNK_SIZE
+			? splitIntoChunksWithOverlap(truncated, MATRIX_CHUNK_SIZE, MATRIX_CHUNK_OVERLAP)
+			: [truncated];
 
 	  // 复用与标书扫描相同的模型映射
 	  const modelMap: Record<string, string> = {
@@ -73,53 +90,174 @@ export async function extractComplianceMatrix(
 	  const model = modelMap[modelType] || modelMap.default;
 
 		  try {
-		    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-		      method: 'POST',
-		      headers: {
-		        'Content-Type': 'application/json',
-		        Authorization: `Bearer ${apiKey}`,
-		        // 注意：Header 必须保持 ASCII，不能包含中文
-		        // 新主域名：rfpai.io
-		        'HTTP-Referer': 'https://rfpai.io',
-		        'X-Title': 'CrossCheck Compliance Matrix',
-		      },
-	      body: JSON.stringify({
-	        model,
-	        messages: [
-	          {
-	            role: 'user',
-	            content: prompt,
-	          },
-	        ],
-	        temperature: 0.2,
-	        max_tokens: 6000,
-	      }),
-	    });
+			const allItems: MatrixItem[] = [];
 
-	    if (!response.ok) {
-	      const errorText = await response.text();
-	      throw new Error(`OpenRouter API error (matrix): ${response.status} - ${errorText}`);
-	    }
+			for (let i = 0; i < chunks.length; i++) {
+				const chunk = chunks[i];
+				const prompt = buildComplianceMatrixPrompt(chunk, lang, {
+					chunkIndex: i + 1,
+					totalChunks: chunks.length,
+				});
 
-	    const data = await response.json();
-	    const aiResponse = data.choices[0].message.content as string;
-	    logger.debug('gemini: matrix AI response preview', {
-	      preview: aiResponse.substring(0, 500),
-	    });
-	    return parseComplianceMatrixResponse(aiResponse);
-	  } catch (error) {
-	    logger.error('gemini: compliance matrix API call failed', {
-	      error: (error as Error)?.message,
-	    });
-	    throw error;
-	  }
+				logger.info('gemini: matrix calling OpenRouter', {
+					chunkIndex: i + 1,
+					totalChunks: chunks.length,
+					chunkChars: chunk.length,
+					model,
+					modelType,
+					lang,
+				});
+
+				const aiResponse = await callOpenRouterChatCompletionWithRetry({
+					apiKey,
+					model,
+					prompt,
+					temperature: 0.2,
+					maxTokens: 3500,
+					title: 'CrossCheck Compliance Matrix',
+					featureTag: 'matrix',
+				});
+
+				logger.debug('gemini: matrix AI response preview', {
+					chunkIndex: i + 1,
+					preview: String(aiResponse || '').substring(0, 500),
+				});
+
+				const parsed = parseComplianceMatrixResponse(String(aiResponse || ''));
+				allItems.push(...(parsed.items || []));
+			}
+
+			// 去重 + 重排 requirementId
+			const seen = new Set<string>();
+			const deduped: MatrixItem[] = [];
+			for (const item of allItems) {
+				const key = normalizeRequirementKey(item?.requirementText);
+				if (!key) continue;
+				if (seen.has(key)) continue;
+				seen.add(key);
+				deduped.push(item);
+			}
+
+			const reindexed = deduped.map((item, idx) => ({
+				...item,
+				requirementId: String(idx + 1),
+			}));
+
+			logger.info('gemini: compliance matrix merged requirements', {
+				totalRaw: allItems.length,
+				totalDeduped: reindexed.length,
+				chunks: chunks.length,
+			});
+
+			return { items: reindexed };
+		  } catch (error: any) {
+			logger.error('gemini: compliance matrix API call failed', {
+				error: error?.message,
+				causeCode: error?.cause?.code,
+				causeName: error?.cause?.name,
+				causeMessage: error?.cause?.message,
+			});
+			throw error;
+		  }
+}
+
+function normalizeRequirementKey(text: unknown): string {
+	if (typeof text !== 'string') return '';
+	return text.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableFetchError(error: any): boolean {
+	const message = error?.message;
+	const code = error?.cause?.code;
+	return (
+		message === 'fetch failed' ||
+		code === 'UND_ERR_CONNECT_TIMEOUT' ||
+		code === 'UND_ERR_HEADERS_TIMEOUT' ||
+		code === 'UND_ERR_SOCKET' ||
+		code === 'ECONNRESET' ||
+		code === 'ETIMEDOUT' ||
+		code === 'EAI_AGAIN' ||
+		code === 'ENOTFOUND'
+	);
+}
+
+async function callOpenRouterChatCompletionWithRetry(params: {
+	apiKey: string;
+	model: string;
+	prompt: string;
+	temperature: number;
+	maxTokens: number;
+	title: string;
+	featureTag: string;
+}): Promise<string> {
+	const { apiKey, model, prompt, temperature, maxTokens, title, featureTag } = params;
+	const maxAttempts = 3;
+
+	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		const controller = new AbortController();
+		const timeoutMs = 60_000;
+		const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+		try {
+			const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+				method: 'POST',
+				signal: controller.signal,
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${apiKey}`,
+					// 注意：Header 必须保持 ASCII
+					'HTTP-Referer': 'https://rfpai.io',
+					'X-Title': title,
+				},
+				body: JSON.stringify({
+					model,
+					messages: [{ role: 'user', content: prompt }],
+					temperature,
+					max_tokens: maxTokens,
+				}),
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				throw new Error(`OpenRouter API error (${featureTag}): ${response.status} - ${errorText}`);
+			}
+
+			const data = await response.json();
+			return String(data?.choices?.[0]?.message?.content ?? '');
+		} catch (error: any) {
+			const retryable = isRetryableFetchError(error);
+			logger.warn('gemini: OpenRouter call failed', {
+				featureTag,
+				attempt,
+				maxAttempts,
+				retryable,
+				error: error?.message,
+				causeCode: error?.cause?.code,
+				causeName: error?.cause?.name,
+			});
+
+			if (attempt < maxAttempts && retryable) {
+				await sleep(500 * attempt);
+				continue;
+			}
+			throw error;
+		} finally {
+			clearTimeout(timer);
+		}
+	}
+
+	return '';
 }
 
 		/**
 		 * 根据 RFP 提取的合规矩阵 + 投标文件全文，生成覆盖情况对比
 		 */
-	export async function compareRfpAndBid(
-		requirements: ComplianceMatrixItem[],
+export async function compareRfpAndBid(
+		requirements: MatrixItem[],
 		bidText: string,
 		modelType: string = 'default',
 		lang: Language = 'zh',
@@ -460,8 +598,12 @@ ${truncated}
 /**
 	 * 构建 AI Prompt（合规矩阵模式：从 RFP 中提取强制性要求）
 	 */
-function buildComplianceMatrixPrompt(rfpText: string, lang: Language): string {
-		  const base = `You are an expert RFP analyst.
+function buildComplianceMatrixPrompt(
+	rfpText: string,
+	lang: Language,
+	chunkInfo?: { chunkIndex: number; totalChunks: number },
+): string {
+		  const baseEn = `You are an expert RFP analyst.
 Your task is to read the following RFP document and extract **all mandatory requirements**.
 
 - Focus on sentences or clauses that express mandatory obligations, especially those containing keywords such as:
@@ -497,8 +639,43 @@ Important rules:
 2. Prefer requirements that clearly describe what the bidder **shall/must** do or provide.
 3. If you cannot infer page number or section, use 0 for page and an empty string for section.
 4. Output must be valid JSON array, with no trailing commas.
+	5. Keep each item's text concise (preferably <= 300 characters).
+	6. If the chunk contains many requirements, you may return at most 120 items for this chunk.
+
+	${
+		chunkInfo && chunkInfo.totalChunks > 1
+			? `Chunking note: This is part ${chunkInfo.chunkIndex} of ${chunkInfo.totalChunks}. Extract requirements ONLY from this part. Do not reference other parts.`
+			: ''
+	}
 
 Now analyze the following RFP text and output the JSON array of mandatory requirements:`;
+
+		  const baseZh = `你是资深招标文件（RFP）分析专家。
+你的任务是从下方招标文件文本中提取 **所有强制性要求/硬性条款**。
+
+- 重点关注包含“必须/应当/须/不得/需要/要求/shall/must/required”等表达强制义务的句子或条款。
+
+对每条强制性要求，返回一个 JSON 对象，包含：
+- "id": 从 1 开始的递增整数
+- "text": 要求原文（尽量精炼但需完整）
+- "page": 能推断则给页码，否则 0
+- "section": 能推断则给章节号/标题，否则空字符串
+
+重要规则：
+1. 不要包含可选项或纯描述性内容。
+2. 输出必须是 **有效 JSON 数组**，不要任何额外解释文字。
+3. 每条 text 尽量简短（建议 <= 300 字）。
+4. 若本段落包含很多要求，可最多返回 120 条。
+
+${
+	chunkInfo && chunkInfo.totalChunks > 1
+		? `分段提示：这是第 ${chunkInfo.chunkIndex} / ${chunkInfo.totalChunks} 段。只从本段文本中提取要求，不要引用其他段落。`
+		: ''
+}
+
+现在开始分析下方 RFP 文本并输出 JSON 数组：`;
+
+		  const base = lang === 'zh' ? baseZh : baseEn;
 
 	  return `${base}
 
@@ -511,16 +688,16 @@ ${rfpText}
 	 * 构建 RFP 要求 vs 投标文件对比 Prompt
 	 */
 	function buildBidComparePrompt(
-		requirements: ComplianceMatrixItem[],
+		requirements: MatrixItem[],
 		bidText: string,
 		lang: Language,
 	): string {
 		const requirementsJson = JSON.stringify(
 			requirements.map((r) => ({
-				id: r.id,
-				text: r.text,
-				page: r.page,
-				section: r.section,
+				id: r.requirementId,
+				text: r.requirementText,
+				page: r.sourcePage ?? 0,
+				section: r.sourceSection ?? '',
 			})),
 			null,
 			2,
@@ -800,10 +977,60 @@ ${rfpText}
 ----- 结束招标文件 [TENDER_DOC] 原文 -----`;
 	}
 
-	/**
-	 * 解析 AI 返回的合规矩阵 JSON
-	 */
-function parseComplianceMatrixResponse(aiResponse: string): { items: ComplianceMatrixItem[] } {
+function normalizeYesNo(value: unknown): YesNo | undefined {
+	if (value === undefined || value === null) return undefined;
+	const v = String(value).trim().toUpperCase();
+	if (!v) return '';
+	if (v === 'Y' || v === 'YES' || v === 'TRUE') return 'Y';
+	if (v === 'N' || v === 'NO' || v === 'FALSE') return 'N';
+	return '';
+}
+
+function normalizeComplianceStatus(value: unknown): ComplianceStatus | undefined {
+	if (value === undefined || value === null) return undefined;
+	const v = String(value).trim().toUpperCase();
+	if (!v) return '';
+	if (v === 'Y' || v === 'YES' || v === 'COMPLIANT') return 'Y';
+	if (v === 'N' || v === 'NO' || v === 'NONCOMPLIANT' || v === 'NON-COMPLIANT') return 'N';
+	if (v === 'PARTIAL' || v === 'PARTIALLY' || v === 'PARTIALLY_COVERED') return 'Partial';
+	return '';
+}
+
+function normalizeMatrixItem(raw: any, index: number): MatrixItem {
+	const sourcePageRaw = raw.sourcePage ?? raw.page ?? raw.source_page;
+	const sourcePage =
+		typeof sourcePageRaw === 'number' ? sourcePageRaw : Number(sourcePageRaw);
+
+	return {
+		requirementId: String(raw.requirementId ?? raw.requirement_id ?? raw.id ?? index + 1),
+		requirementText: String(
+			raw.requirementText ?? raw.requirement_text ?? raw.text ?? raw.requirement ?? '',
+		),
+		sourceSection: String(raw.sourceSection ?? raw.section ?? raw.section_id ?? ''),
+		sourcePage: Number.isFinite(sourcePage) ? sourcePage : 0,
+		requirementType: raw.requirementType ?? raw.requirement_type,
+		complianceStatus: normalizeComplianceStatus(raw.complianceStatus ?? raw.compliance_status),
+		amendmentId: raw.amendmentId ?? raw.amendment_id,
+		farDfarsReference:
+			raw.farDfarsReference ?? raw.far_dfars_reference ?? raw.far_dfars,
+		responseOwner: raw.responseOwner ?? raw.response_owner,
+		proposalVolume: raw.proposalVolume ?? raw.proposal_volume,
+		proposalSection: raw.proposalSection ?? raw.proposal_section,
+		proposalReference: raw.proposalReference ?? raw.proposal_reference,
+		qaReviewed: normalizeYesNo(raw.qaReviewed ?? raw.qa_reviewed),
+		riskGap: raw.riskGap ?? raw.risk_gap,
+		customerPriority: raw.customerPriority ?? raw.customer_priority,
+		responseStrategy: raw.responseStrategy ?? raw.response_strategy,
+		dealStage: raw.dealStage ?? raw.deal_stage,
+		legalRiskFlag: raw.legalRiskFlag ?? raw.legal_risk_flag,
+		commentsNotes: raw.commentsNotes ?? raw.comments_notes ?? raw.comments,
+	};
+}
+
+/**
+ * 解析 AI 返回的合规矩阵 JSON
+ */
+function parseComplianceMatrixResponse(aiResponse: string): { items: MatrixItem[] } {
 		  try {
 		    let jsonStr = aiResponse.trim();
 
@@ -826,12 +1053,7 @@ function parseComplianceMatrixResponse(aiResponse: string): { items: ComplianceM
 		    }
 
 		    const rawItems: any[] = JSON.parse(jsonStr);
-		    const items: ComplianceMatrixItem[] = rawItems.map((raw, index) => ({
-		      id: typeof raw.id === 'number' ? raw.id : index + 1,
-		      text: String(raw.text || raw.requirement || ''),
-		      page: typeof raw.page === 'number' ? raw.page : Number(raw.page) || 0,
-		      section: String(raw.section || raw.section_id || ''),
-		    }));
+		    const items: MatrixItem[] = rawItems.map((raw, index) => normalizeMatrixItem(raw, index));
 
 		    logger.info('gemini: parsed compliance requirements', {
 		      count: items.length,
@@ -882,12 +1104,7 @@ function parseComplianceMatrixResponse(aiResponse: string): { items: ComplianceM
 		        }
 
 		        if (objects.length > 0) {
-		          const items: ComplianceMatrixItem[] = objects.map((raw, index) => ({
-		            id: typeof raw.id === 'number' ? raw.id : index + 1,
-		            text: String(raw.text || raw.requirement || ''),
-		            page: typeof raw.page === 'number' ? raw.page : Number(raw.page) || 0,
-		            section: String(raw.section || raw.section_id || ''),
-		          }));
+		          const items: MatrixItem[] = objects.map((raw, index) => normalizeMatrixItem(raw, index));
 		          logger.warn('gemini: manually extracted compliance requirements after parse failure', {
 		            count: items.length,
 		          });
@@ -909,7 +1126,7 @@ function parseComplianceMatrixResponse(aiResponse: string): { items: ComplianceM
 	 */
 	function parseBidCompareResponse(
 		aiResponse: string,
-		requirements: ComplianceMatrixItem[],
+		requirements: MatrixItem[],
 	): { items: BidComparisonItem[]; summary: BidComparisonSummary } {
 		try {
 			let jsonStr = aiResponse.trim();
@@ -926,12 +1143,19 @@ function parseComplianceMatrixResponse(aiResponse: string): { items: ComplianceM
 
 			const items: BidComparisonItem[] = Array.isArray(parsed.items)
 				? parsed.items.map((raw: any, index: number) => {
-					const requirementId =
-						typeof raw.requirement_id === 'number'
-							? raw.requirement_id
-							: Number(raw.requirement_id) || requirements[index]?.id || index + 1;
-					const requirement =
-						String(raw.requirement_text || raw.requirement || requirements.find((r) => r.id === requirementId)?.text || '');
+					const requirementId = String(
+						raw.requirement_id ??
+							raw.requirementId ??
+							requirements[index]?.requirementId ??
+							index + 1,
+					);
+					const requirement = String(
+						raw.requirement_text ||
+							raw.requirement ||
+							requirements.find((r) => r.requirementId === requirementId)?.requirementText ||
+							requirements[index]?.requirementText ||
+							'',
+					);
 					let statusRaw = String(raw.status || 'missing').toLowerCase();
 					let status: BidComparisonItem['status'];
 					if (statusRaw === 'covered') status = 'covered';
@@ -998,14 +1222,18 @@ function parseComplianceMatrixResponse(aiResponse: string): { items: ComplianceM
 
 						if (rawObjects.length > 0) {
 							const items: BidComparisonItem[] = rawObjects.map((raw, index) => {
-								const requirementId =
-									typeof raw.requirement_id === 'number'
-										? raw.requirement_id
-										: Number(raw.requirement_id) || requirements[index]?.id || index + 1;
+								const requirementId = String(
+									raw.requirement_id ??
+										raw.requirementId ??
+										requirements[index]?.requirementId ??
+										index + 1,
+								);
 								const requirement = String(
 									raw.requirement_text ||
 										raw.requirement ||
-										requirements.find((r) => r.id === requirementId)?.text ||
+										requirements.find((r) => r.requirementId === requirementId)
+											?.requirementText ||
+										requirements[index]?.requirementText ||
 										'',
 								);
 								let statusRaw = String(raw.status || 'missing').toLowerCase();
@@ -1206,4 +1434,20 @@ function splitIntoChunks(text: string, chunkSize: number): string[] {
   }
   
   return chunks;
+}
+
+function splitIntoChunksWithOverlap(text: string, chunkSize: number, overlap: number): string[] {
+	if (chunkSize <= 0) return [text];
+	const safeOverlap = Math.max(0, Math.min(overlap, Math.max(0, chunkSize - 1)));
+	const chunks: string[] = [];
+	let start = 0;
+
+	while (start < text.length) {
+		const end = Math.min(text.length, start + chunkSize);
+		chunks.push(text.substring(start, end));
+		if (end >= text.length) break;
+		start = Math.max(0, end - safeOverlap);
+	}
+
+	return chunks;
 }

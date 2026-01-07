@@ -10,6 +10,9 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { existsSync } from 'fs';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/analyze
  * 上传 PDF / Word 并进行分析
@@ -179,14 +182,55 @@ export async function POST(request: NextRequest) {
 	    });
     
   } catch (error: any) {
-    logger.error('analyze: failed', {
-      error: error?.message,
-      stack: error?.stack,
-    });
-    return NextResponse.json(
-      { error: error.message || 'Analysis failed' },
-      { status: 500 }
-    );
+	    const message = error?.message || 'Analysis failed';
+	    const durationMs = Date.now() - requestStartedAt;
+
+		    const cause = error?.cause;
+		    const causeInfo = {
+		      causeCode: cause?.code,
+		      causeName: cause?.name,
+		      causeMessage: cause?.message,
+		    };
+
+	    let status = 500;
+	    let safeError = message;
+
+	    if (typeof message === 'string') {
+	      if (message.includes('OPENROUTER_API_KEY is not configured')) {
+	        status = 503;
+	        safeError =
+	          'OPENROUTER_API_KEY is not configured. Please set it in your environment (.env.local) and restart the dev server.';
+	      } else if (message === 'fetch failed') {
+	        status = 502;
+	        safeError =
+	          'Failed to reach OpenRouter (network). Please check outbound internet access and any proxy/VPN settings.';
+	      } else if (message.startsWith('OpenRouter API error')) {
+	        status = 502;
+	        safeError =
+	          'OpenRouter API returned an error. Please verify OPENROUTER_API_KEY and your OpenRouter account / rate limits.';
+	      }
+	    }
+
+	    logger.error('analyze: failed', {
+	      error: message,
+	      stack: error?.stack,
+		      ...causeInfo,
+	      durationMs,
+	    });
+
+		    // Dev only: attach extra network debug info to speed up troubleshooting
+		    const debug =
+		      process.env.NODE_ENV !== 'production'
+		        ? {
+		            message,
+		            ...causeInfo,
+		          }
+		        : undefined;
+
+		    return NextResponse.json(
+		      debug ? { error: safeError, debug } : { error: safeError },
+		      { status },
+		    );
   }
 }
 

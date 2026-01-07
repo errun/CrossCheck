@@ -1,32 +1,63 @@
-import type { ComplianceMatrixItem } from '@/types';
-import * as XLSX from 'xlsx';
+'use client';
 
-	/**
-	 * 将合规矩阵结果导出为 Excel 文件
-	 * 列标题：ID, RFP Requirement, Reference Section/Page, Comply (Yes/No), Comments / Proposal Reference
-	 */
-	export function downloadMatrixAsExcel(
-	items: ComplianceMatrixItem[],
-	options?: {
-	  filename?: string;
-	  complyMap?: Record<number, string>;
-	  commentMap?: Record<number, string>;
-	},
+import type { MatrixItem } from '@/types';
+
+type ExportTemplate = 'gov' | 'enterprise';
+
+const downloadFromApi = async (
+	template: ExportTemplate,
+	items: MatrixItem[],
+	filename: string,
+) => {
+	const response = await fetch('/api/matrix-export', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({ template, items }),
+	});
+
+	if (!response.ok) {
+		let message = `Export failed (${response.status})`;
+		try {
+			const data = await response.json();
+			if (data?.error) {
+				message = data.error;
+			}
+		} catch {
+			// ignore JSON parse error
+		}
+		throw new Error(message);
+	}
+
+	const blob = await response.blob();
+	const url = window.URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = filename;
+	document.body.appendChild(link);
+	link.click();
+	link.remove();
+	window.URL.revokeObjectURL(url);
+};
+
+export async function downloadGovMatrix(items: MatrixItem[], filename?: string) {
+	if (typeof window === 'undefined') return;
+	await downloadFromApi(
+		'gov',
+		items,
+		filename || 'Gov_RFP_Compliance_Matrix.xlsx',
+	);
+}
+
+export async function downloadEnterpriseMatrix(
+	items: MatrixItem[],
+	filename?: string,
 ) {
-	const { filename = 'compliance-matrix.xlsx', complyMap = {}, commentMap = {} } = options || {};
-
-		// 组装为 json_to_sheet 可识别的结构
-		const rows = items.map((item) => ({
-		  ID: item.id,
-		  'RFP Requirement': item.text,
-		  'Reference Section/Page': item.section || '',
-		  'Comply (Yes/No)': complyMap[item.id] ?? '',
-		  'Comments / Proposal Reference': commentMap[item.id] ?? '',
-		}));
-
-	const worksheet = XLSX.utils.json_to_sheet(rows);
-	const workbook = XLSX.utils.book_new();
-	XLSX.utils.book_append_sheet(workbook, worksheet, 'Compliance Matrix');
-
-	XLSX.writeFile(workbook, filename);
+	if (typeof window === 'undefined') return;
+	await downloadFromApi(
+		'enterprise',
+		items,
+		filename || 'Enterprise_RFP_Response_Matrix.xlsx',
+	);
 }
