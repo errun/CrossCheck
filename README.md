@@ -2,6 +2,8 @@
 
 AI 驱动的标书自动审查与可视化分析系统，基于 Next.js 14 和 Gemini AI。
 
+Deployed with Vercel: [rfp-cwdglbljl-erruns-projects.vercel.app](https://rfp-cwdglbljl-erruns-projects.vercel.app) | Original tool: https://www.rfpai.io
+
 ## 功能特性
 
 - ✅ **智能审查**：基于 Gemini AI 的标书自动审查
@@ -151,4 +153,3 @@ MIT License
 ## 联系方式
 
 如有问题或建议，请提交 Issue。
-
