@@ -1,4 +1,4 @@
-# 标书全能王（CrossCheck）- 标书智能审查系统
+# 标书全能王（rfpai）- 标书智能审查系统
 
 AI 驱动的标书自动审查与可视化分析系统，基于 Next.js 14 和 Gemini AI。
 
@@ -80,7 +80,7 @@ npm run dev
 ## 项目结构
 
 ```
-CrossCheck/
+rfpai/
 ├── app/
 │   ├── api/
 │   │   ├── analyze/       # 分析 API

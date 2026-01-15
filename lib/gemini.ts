@@ -114,7 +114,7 @@ export async function extractComplianceMatrix(
 					prompt,
 					temperature: 0.2,
 					maxTokens: 3500,
-					title: 'CrossCheck Compliance Matrix',
+					title: 'rfpai Compliance Matrix',
 					featureTag: 'matrix',
 				});
 
@@ -289,7 +289,7 @@ export async function compareRfpAndBid(
 					Authorization: `Bearer ${apiKey}`,
 					// Header 只能为 ASCII
 					'HTTP-Referer': 'https://rfpai.io',
-					'X-Title': 'CrossCheck RFP vs Bid Comparator',
+					'X-Title': 'rfpai RFP vs Bid Comparator',
 				},
 				body: JSON.stringify({
 					model,
@@ -359,7 +359,7 @@ export async function compareRfpAndBid(
 						Authorization: `Bearer ${apiKey}`,
 						// Header 只能使用 ASCII 字符
 						'HTTP-Referer': 'https://rfpai.io',
-						'X-Title': 'CrossCheck Bid Draft Generator',
+						'X-Title': 'rfpai Bid Draft Generator',
 					},
 					body: JSON.stringify({
 						model,
@@ -426,7 +426,7 @@ async function callGeminiAPI(
 		        // 否则在 Node 的 fetch/undici 中会因为 ByteString 校验失败而报错
 		        // 新主站域名：rfpai.io
 		        'HTTP-Referer': 'https://rfpai.io',
-		        'X-Title': 'CrossCheck RFP Checker',
+		        'X-Title': 'rfpai RFP Checker',
       },
       body: JSON.stringify({
         model: model,
@@ -470,7 +470,7 @@ async function callGeminiAPI(
 
 	  if (lang === 'en') {
 	    return `# Role & Objective
-You are an expert AI assistant specialized in government procurement and bid proposal review (CrossCheck core engine).
+You are an expert AI assistant specialized in government procurement and bid proposal review (rfpai core engine).
 
 **Goal:** Strictly follow the following **Checklist & Rules** to review the bid document, and identify all risks in three levels:
 - **P1**: Fatal issues that may directly cause bid rejection
@@ -536,7 +536,7 @@ Return **only** a JSON object in the following format. Do **not** include any ex
 
 		  // 默认中文提示词
 		  return `# 角色与目标
-**角色：** 您是专业的政府采购/招投标AI审查专家（CrossCheck 审查核心）。
+**角色：** 您是专业的政府采购/招投标AI审查专家（rfpai 审查核心）。
 **任务目标：** 严格遵循以下《检查清单》对投标文件进行审查，识别所有废标（P1）、扣分（P2）、格式（P3）风险。
 **核心原则：** 必须确保所有查出的问题，均能追溯到**具体的页码和段落**。
 

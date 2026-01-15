@@ -1,7 +1,7 @@
-# CrossCheck 启动脚本 (Windows PowerShell)
+# rfpai 启动脚本 (Windows PowerShell)
 
 Write-Host "==================================" -ForegroundColor Cyan
-Write-Host "  CrossCheck 标书智能审查系统" -ForegroundColor Cyan
+Write-Host "  rfpai 标书智能审查系统" -ForegroundColor Cyan
 Write-Host "==================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -57,4 +57,3 @@ Write-Host "按 Ctrl+C 停止服务器" -ForegroundColor Gray
 Write-Host ""
 
 npm run dev
-

@@ -1,4 +1,4 @@
-# CrossCheck 项目实施总结
+# rfpai 项目实施总结
 
 ## 项目概述
 
@@ -61,7 +61,7 @@ Next.js API: 解析 PDF 文本 (pdf-parse)
 ## 文件结构
 
 ```
-CrossCheck/
+rfpai/
 ├── app/
 │   ├── api/
 │   │   ├── analyze/route.ts      # 分析 API（上传+分析）
@@ -198,4 +198,3 @@ npm run dev
 
 项目已完整实现 PRD 要求的核心功能，采用极简的 AI-First 架构，最大化依赖 Gemini 的能力。
 代码结构清晰，易于维护和扩展。可以直接部署使用，也可以根据实际需求进行优化。
-

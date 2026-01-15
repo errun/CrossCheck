@@ -112,7 +112,7 @@ const translations: Record<Language, {
 	      '没有任何工具能 100% 保证中标，但通过在提交前自动发现 P1 致命风险和重要合规缺口，它可以大幅降低因低级错误或漏项而导致的废标可能性。',
   },
 		  en: {
-		    appName: 'CrossCheck',
+		    appName: 'rfpai',
 			    heroTitle: 'Automated Proposal Compliance & Error Scanner',
 		    heroSubtitle: '',
 		    matrixLinkLabel: 'AI Compliance Matrix Generator',

@@ -197,9 +197,9 @@ const industryStandardsFaqItems = [
 ];
 
 export default function ComplianceMatrixPage({
-  lang,
+  lang = "en",
 }: {
-  lang: Language;
+  lang?: Language;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
