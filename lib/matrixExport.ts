@@ -37,6 +37,8 @@ export type EnterpriseViewRow = {
 	'Proposal Reference': string;
 	'Legal / Risk Flag': string;
 	'Comments / Notes': string;
+	'Source Page': number | string;
+	'Compliance Status': string;
 };
 
 const TEMPLATE_FILES: Record<ExportTemplate, string> = {
@@ -88,6 +90,8 @@ const ENTERPRISE_HEADERS: Array<keyof EnterpriseViewRow> = [
 	'Proposal Reference',
 	'Legal / Risk Flag',
 	'Comments / Notes',
+	'Source Page',
+	'Compliance Status',
 ];
 
 // Column widths (approximate, in "characters") to keep exports readable.
@@ -123,6 +127,8 @@ const ENTERPRISE_COL_WIDTHS: XLSX.ColInfo[] = [
 	{ wch: 20 }, // Proposal Reference
 	{ wch: 18 }, // Legal / Risk Flag
 	{ wch: 30 }, // Comments / Notes
+	{ wch: 12 }, // Source Page
+	{ wch: 18 }, // Compliance Status
 ];
 
 const applySheetViewFormatting = (
@@ -196,6 +202,8 @@ const toEnterpriseViewRow = (item: MatrixItem): EnterpriseViewRow => ({
 	'Proposal Reference': normalizeCell(item.proposalReference),
 	'Legal / Risk Flag': normalizeCell(item.legalRiskFlag),
 	'Comments / Notes': normalizeCell(item.commentsNotes),
+	'Source Page': item.sourcePage ?? '',
+	'Compliance Status': normalizeCell(item.complianceStatus),
 });
 
 const clearSheetBelowHeader = (sheet: XLSX.WorkSheet, headerRowIndex: number) => {
@@ -239,6 +247,7 @@ export const buildMatrixWorkbook = (
 
 	const headerRowIndex = 0;
 	clearSheetBelowHeader(sheet, headerRowIndex);
+	XLSX.utils.sheet_add_aoa(sheet, [template === 'gov' ? GOV_HEADERS : ENTERPRISE_HEADERS], { origin: { r: headerRowIndex, c: 0 } });
 
 	applySheetViewFormatting(sheet, {
 		headersCount: template === 'gov' ? GOV_HEADERS.length : ENTERPRISE_HEADERS.length,

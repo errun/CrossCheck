@@ -839,8 +839,8 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
                 </div>
                 <div className="text-[11px] text-slate-500">
                   {lang === "zh"
-                    ? "支持 PDF / Word (.docx)，建议控制在 4MB 以内"
-                    : "PDF / Word (.docx), recommended size ≤ 4MB"}
+                    ? "支持 PDF / Word (.docx)，最大4MB、PDF最多50页、6万字符"
+                    : "PDF / Word (.docx): max 4MB, 50 PDF pages, 60,000 characters"}
                 </div>
                 <input
                   type="file"

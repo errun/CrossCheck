@@ -521,8 +521,8 @@ export default function ComplianceMatrixPage({
                 </CardTitle>
 	                <CardDescription className="text-xs text-slate-600">
 	                  {lang === "zh"
-	                    ? "如为 .doc，请先在本地另存为 .docx 或导出为 PDF 后再上传。This online version does not currently support parsing .doc files directly."
-	                    : "If your file is .doc instead of .docx, please convert it to .docx or export it to PDF locally before uploading. This online version does not currently support parsing .doc files directly."}
+	                    ? "支持文本型 PDF / Word (.docx)，最大4MB、PDF最多50页、6万字符；.doc 请先另存为 .docx 或 PDF。"
+	                    : "Text PDF / Word (.docx): max 4MB, 50 PDF pages, 60,000 characters. Convert .doc to .docx or PDF first."}
 	                </CardDescription>
               </CardHeader>
               <CardContent className="p-4 pt-0 md:p-8 md:pt-0">
