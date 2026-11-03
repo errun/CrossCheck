@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 	description:
 		"Streamline your RFP process with AI. Automated compliance checks, cross-referencing, and risk analysis.",
 	metadataBase: new URL(siteUrl),
+	icons: { icon: { url: '/rfpai-icon.svg', type: 'image/svg+xml' } },
 	openGraph: {
 		title: "RFPAI — Bid Review & RFP Compliance Tools",
 		description:
