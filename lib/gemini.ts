@@ -44,11 +44,15 @@ Preserve the source language, numbers, conditions and negations. Each requiremen
 export async function generateBidDraftFromRfp(text: string, _model = 'default', lang: Language = 'zh'): Promise<BidDraft> {
   checkText(text);
   const { items } = await extractComplianceMatrix(text, 'default', lang);
+  const planStyle = lang === 'zh'
+    ? 'Write the plan in Chinese. Use proposed action wording such as 拟开展、建议安排 rather than repetitive 可能.'
+    : 'Write the entire plan in English, with no Chinese sentences or words. Use proposed-action wording such as "We propose to" or "The plan is to". Refer to the project generically rather than introducing names or translations.';
   const result = await jsonResult('DRAFT', `Write a proposed implementation plan for the procurement below. Return JSON {"plan":"plain text, at most 800 words"}.
-Use ${lang === 'zh' ? 'Chinese' : 'English'}. Use proposed action wording (拟开展、建议安排), not repetitive uncertain wording (可能、may). Describe concrete implementation phases rather than repeating cover forms or background. This is a proposed plan for bidder review, NOT a verified capability or commitment. Do not include qualifications, supplier names, signatures, deposits, prices, attachments or compliance declarations. Do not say materials are already supplied, qualifications held or clauses fully compliant. Never invent legal conditions. Preserve mandatory numerical requirements if mentioned. No preamble or meta-instructions.
+${planStyle} Write from the bidder's proposed delivery perspective. Do not describe selecting bidders, awarding the contract or evaluating proposals. Describe concrete implementation phases rather than repeating cover forms or background. This is a proposed plan for bidder review, NOT a verified capability or commitment. Do not include qualifications, supplier names, signatures, deposits, prices, attachments or compliance declarations. Do not say materials are already supplied, qualifications held or clauses fully compliant. Never invent legal conditions. Preserve mandatory numerical requirements if mentioned. No preamble or meta-instructions.
 <document>\n${text}\n</document>`);
   if (typeof result.plan !== 'string' || result.plan.trim().length < 80) invalidResult();
   const plan = result.plan.trim();
+  if (lang === 'en' && /[\u3400-\u9fff]/.test(plan)) invalidResult();
   if (/已提供|已取得|已提交|完全响应|无偏离|fully compliant|already (?:provided|submitted)|guarantee bond|投标保证金/i.test(plan)) invalidResult();
   const name = text.match(/(?:项目名称|Project name)\s*[:：]\s*([^\n。]+)/i)?.[1] || text.split('\n').find(line => /招标文件|request for proposal/i.test(line))?.replace(/招标文件|request for proposal/ig, '').trim() || (lang === 'zh' ? '[项目名称需用户填写]' : '[Project name required]');
   const projectId = text.match(/(?:项目编号|Project (?:ID|number))\s*[:：]\s*([A-Za-z0-9_-]+)/i)?.[1] || (lang === 'zh' ? '[需用户填写]' : '[To be completed]');
