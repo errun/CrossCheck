@@ -28,3 +28,10 @@ export const toolMetadata = {
     en: pageMetadata('en', '/bid-writer', 'AI Bid Draft Generator: RFP to Word Proposal | RFPAI', 'Create a draft from a public or fictional RFP with source requirements, pending responses and a proposed plan. Export to Word; complete and verify bidder details yourself.', '/bid-writer', '/zh/bid-writer'),
   },
 };
+
+export function resourceMetadata(lang: Language, kind: 'example' | 'template') {
+  const example = kind === 'example', en = example ? '/examples/bid-review' : '/templates/compliance-matrix', zh = `/zh${en}`;
+  const title = lang === 'zh' ? (example ? '标书检查与合规矩阵完整案例：公开虚构样本 | RFPAI' : '合规矩阵Excel模板与填写说明：免费下载 | RFPAI') : (example ? 'RFP Compliance Matrix & Bid Review Worked Example | RFPAI' : 'Free Compliance Matrix Excel Templates & Instructions | RFPAI');
+  const description = lang === 'zh' ? (example ? '下载虚构招标文件、投标文件和示例结果，逐条查看16项强制要求与8类预埋问题，了解原文定位、响应状态和AI检查的适用边界。' : '免费下载Gov和Enterprise合规矩阵Excel空白模板，附要求原文、来源位置、响应状态、责任人和证据的填写方法及提交前检查清单。') : (example ? 'Download fictional Chinese RFP and bid files, inspect 16 mandatory clauses and eight planted issue categories, and review source references, outputs and limitations.' : 'Download free Gov and Enterprise compliance matrix Excel templates. Learn how to record source clauses, pending status, owners, proposal evidence and review notes.');
+  return pageMetadata(lang, lang === 'zh' ? zh : en, title, description, en, zh);
+}

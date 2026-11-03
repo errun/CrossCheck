@@ -814,8 +814,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 
         {/* 上传区 */}
         <div className="max-w-3xl mx-auto mt-8">
-          <ToolGuide lang={lang} tool="writer" />
-        <Card className="border border-dashed border-slate-300 bg-white/70 backdrop-blur-sm">
+        <Card id="upload" className="border border-dashed border-slate-300 bg-white/70 backdrop-blur-sm">
             <CardHeader>
               <div className="flex items-center gap-2 mb-1">
                 <FileText className="w-5 h-5 text-blue-600" />
@@ -926,6 +925,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
             </div>
           </div>
         )}
+        <ToolGuide lang={lang} tool="writer" />
       </div>
     </div>
   );

@@ -512,7 +512,6 @@ export default function ComplianceMatrixPage({
               )}
             </div>
 
-            <ToolGuide lang={lang} tool="matrix" />
             <Card
               id="upload"
               className="w-full max-w-2xl mx-auto bg-white border border-slate-200 shadow-2xl rounded-2xl"
@@ -764,6 +763,7 @@ export default function ComplianceMatrixPage({
 
 
 
+        <ToolGuide lang={lang} tool="matrix" />
         <section className="bg-white px-4 py-8 md:px-20 md:py-16">
           <div className="mx-auto max-w-6xl space-y-10">
             <div className="text-center space-y-3">

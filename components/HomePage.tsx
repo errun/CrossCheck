@@ -385,13 +385,13 @@ export function HomePage({ lang }: { lang: Language }) {
 		          </p>
           
 		        </header>
-            <ToolGuide lang={lang} tool="scanner" />
+
 
 	      {/* 上传区 + 合规矩阵入口 */}
 	        {!analyzing && !result && (
 	          <div className="max-w-2xl mx-auto space-y-4">
 	            {/* 标书扫描器上传卡片 */}
-	            <Card className="bg-white border-slate-200 shadow-sm rounded-xl">
+	            <Card id="upload" className="bg-white border-slate-200 shadow-sm rounded-xl">
 	              <CardHeader>
 	                <CardTitle>{t.uploadCardTitle}</CardTitle>
 	                <CardDescription>
@@ -678,7 +678,8 @@ export function HomePage({ lang }: { lang: Language }) {
           </div>
         )}
 	      </div>
-		      {/* FAQ Section */}
+		      <ToolGuide lang={lang} tool="scanner" />
+          {/* FAQ Section */}
 		      <section className="mt-16 bg-white/80 rounded-2xl shadow-sm border border-slate-200">
 		        <div className="px-6 py-6 md:px-8 md:py-8 max-w-5xl mx-auto">
 		          <h2 className="text-2xl font-semibold text-slate-900 mb-4">
