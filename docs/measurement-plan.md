@@ -18,6 +18,8 @@
 
 `tool`仅允许scanner/matrix/writer；`file_format`仅允许csv/xlsx_gov/xlsx_enterprise/docx/pdf_print；`resource`仅允许固定公开资料编号。禁止发送文件名、正文、报价、投标人名称或原始错误内容。
 
+工作指南新增两种固定资料编号：`review_checklist_en`和`review_checklist_zh`，分别表示中英文12项人工复核CSV。沿用`resource_download`，不能计作`tool_success`。指南落地网址通过GA4现有page_view与落地页维度观察，不新增正文、文件名或搜索词自定义参数。
+
 所有业务事件只在rfpai.io与www.rfpai.io发送；本地和预览不发送。统计调用失败不能影响生成、复制或下载。自动测试验证此约束。
 
 ## 查看方法

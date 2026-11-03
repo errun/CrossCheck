@@ -19,6 +19,7 @@ export function ToolGuide({ lang, tool }: { lang: Language; tool: Tool }) {
       {(Object.keys(paths) as Tool[]).map(key => <Link key={key} href={paths[key]} aria-current={tool === key ? 'page' : undefined} className={tool === key ? 'font-semibold text-slate-950' : 'text-blue-700 underline underline-offset-4'}>{names[key]}</Link>)}
       <Link href={`${prefix}/examples/bid-review`} className="text-blue-700 underline underline-offset-4">{zh ? '完整案例' : 'Worked example'}</Link>
       <Link href={`${prefix}/templates/compliance-matrix`} className="text-blue-700 underline underline-offset-4">{zh ? 'Excel模板与填写说明' : 'Excel templates & instructions'}</Link>
+      <Link href={`${prefix}/guides/${tool === 'scanner' ? 'bid-review-checklist' : 'rfp-shredding'}`} className="text-blue-700 underline underline-offset-4">{zh ? (tool === 'scanner' ? '投标前12项检查' : '招标要求拆解指南') : (tool === 'scanner' ? '12-point bid review checklist' : 'RFP shredding guide')}</Link>
     </nav>
     <h2 className="mt-5 text-lg font-semibold text-slate-950">{zh ? '你将得到什么' : 'What you will get'}</h2>
     <ol className="mt-4 grid gap-4 md:grid-cols-3">{steps[tool].map((text, i) => <li key={text} className="flex gap-3 text-sm leading-6 text-slate-700"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 font-semibold text-blue-800">{i + 1}</span><span>{text}</span></li>)}</ol>
