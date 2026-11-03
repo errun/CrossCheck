@@ -617,7 +617,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
       setRfpFile(null);
       setDraft("");
       setError(
-        "当前在线版本暂不支持直接解析 .doc，请先在本地另存为 .docx 或导出为 PDF 后再上传。This online version does not currently support parsing .doc files directly. Please save the file as .docx or export it to PDF locally before uploading.",
+        "当前在线版本暂不支持直接解析 .doc，请先在本地另存为 .docx 或打印 / 另存为 PDF 后再上传。This online version does not currently support parsing .doc files directly. Please save the file as .docx or export it to PDF locally before uploading.",
       );
       try {
         (e.target as HTMLInputElement).value = "";
@@ -900,7 +900,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 	                  className="inline-flex items-center gap-1"
 	                >
 	                  <Download className="w-4 h-4" />
-	                  <span>{lang === "zh" ? "导出为 PDF" : "Export as PDF"}</span>
+	                  <span>{lang === "zh" ? "打印 / 另存为 PDF" : "Print / Save as PDF"}</span>
 	                </Button>
                 <Button
                   variant="outline"
