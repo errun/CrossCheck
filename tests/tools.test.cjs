@@ -20,6 +20,16 @@ global.fetch = async (url, options) => {
 process.env.OPENROUTER_API_KEY = 'unit-test-placeholder';
 const reply = data => { modelReply = { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(data) } }], usage: { cost: 0 } }; };
 
+test('English drafts reject Chinese plans and use an English-only style instruction',async()=>{
+ const text='Project name: Fictional tracker\nProject ID: DEMO-EN-001\nClause 1.1 The bidder must deliver within 30 days.\n'+'Public fictional test material. '.repeat(4);
+ const items=[{requirementText:'The bidder must deliver within 30 days.',sourceSection:'Clause 1.1'}];
+ reply({items,plan:'拟开展项目启动和需求确认，建议安排交付与审核。'.repeat(6)});
+ await assert.rejects(generateBidDraftFromRfp(text,'default','en'),e=>e.code==='INVALID_AI_RESULT');
+ assert.ok(!/[\u3400-\u9fff]/.test(calls.at(-1).messages.at(-1).content));
+ reply({items,plan:'We propose to review the requirements, plan delivery within 30 days, test the implementation and prepare a handover for bidder review.'});
+ const result=await generateBidDraftFromRfp(text,'default','en');assert.ok(!/[\u3400-\u9fff]/.test(result.content));assert.match(result.content,/Pending confirmation and evidence/);
+});
+
 test('English bid detects eight conflict fields and missing authorization with English feedback', async()=>{
  const doc=await readDocument(new File([fs.readFileSync(path.join(fixtures,'bid-errors-en.docx'))],'bid.docx'));
  const errors=consistencyErrors(doc.text,[],'en');assert.equal(errors.length,9);
