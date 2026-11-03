@@ -2,7 +2,8 @@
 
 import { ToolGuide } from '@/components/ToolGuide';
 import { FreeMaterialConsent } from "@/components/FreeMaterialConsent";
-import { toolEvent } from "@/lib/tool-events";
+import { useToolJourney } from "@/components/useToolJourney";
+import { uploadValidationMessage } from "@/lib/tool-journey";
 import { useState } from 'react';
 import Link from 'next/link';
 import { Upload, FileText, AlertCircle, CheckCircle2, Loader2, Download, ArrowRight, Flame } from 'lucide-react';
@@ -200,6 +201,7 @@ function extractCorrectText(suggestion: string): string {
 
 export function HomePage({ lang }: { lang: Language }) {
 	  const [freeConsent, setFreeConsent] = useState(false);
+  const journey = useToolJourney('scanner', lang);
   const [file, setFile] = useState<File | null>(null);
 	  const [analyzing, setAnalyzing] = useState(false);
 		  const [result, setResult] = useState<any>(null);
@@ -213,20 +215,15 @@ export function HomePage({ lang }: { lang: Language }) {
 	    const selectedFile = e.target.files?.[0];
 	    if (!selectedFile) return;
 
-	    const lowerName = selectedFile.name.toLowerCase();
-	    // 如果是旧版 .doc（而不是 .docx），前端直接提示暂不支持
-	    if (lowerName.endsWith('.doc') && !lowerName.endsWith('.docx')) {
-	      setFile(null);
-	      setResult(null);
-		      setError(t.docNotSupportedMessage);
-	      // 重置 input，方便用户重新选择
-	      try {
-	        e.target.value = '';
-	      } catch {}
-	      return;
-	    }
+	    const rejected = journey.selectFile(selectedFile);
+    if (rejected) {
+      setFile(null); setResult(null); setFreeConsent(false);
+      setError(uploadValidationMessage(rejected, lang));
+      e.target.value = '';
+      return;
+    }
 
-	    setFile(selectedFile);
+    setFile(selectedFile);
     setFreeConsent(false);
 	    setError('');
 	    setResult(null);
@@ -236,7 +233,7 @@ export function HomePage({ lang }: { lang: Language }) {
 	    	    if (!file) return;
 	   		
 	   		    // Authentication is not required for analysis in the current low-volume phase.
-             toolEvent('scanner', 'start');
+             journey.begin();
     setAnalyzing(true);
     setError('');
 
@@ -250,7 +247,7 @@ export function HomePage({ lang }: { lang: Language }) {
 	      formData.append('lang', lang);
 
 		      // 调用 API
-		      const res = await fetch('/api/analyze', {
+		      const res = await journey.request('/api/analyze', {
 		        method: 'POST',
 		        body: formData
 		      });
@@ -280,13 +277,14 @@ export function HomePage({ lang }: { lang: Language }) {
 			      }
 	
 	      const data = await res.json();
+      if (!Array.isArray(data?.errors) || typeof data.total_pages !== 'number') { journey.invalidResult(); throw new Error(t.defaultErrorMessage); }
       setTotalPages(data.total_pages);
 
       setResult(data);
-      toolEvent('scanner', 'success');
+      journey.success();
 
 	      } catch (err: any) {
-	      toolEvent('scanner', 'failure');
+	      journey.failure();
       setError(err.message || t.defaultErrorMessage);
       console.error('Analysis error:', err);
     } finally {
@@ -296,14 +294,14 @@ export function HomePage({ lang }: { lang: Language }) {
 
   const handleDownload = async () => {
     if (!result) return;
-    
+    journey.exportBegin('csv');
     try {
       const response = await fetch('/api/export', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ errors: result.errors, lang }) });
       if (!response.ok) throw new Error('export failed');
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement('a'); link.href = url; link.download = 'bid-checklist.csv'; link.click(); URL.revokeObjectURL(url);
-      toolEvent('scanner', 'download', 'csv');
-    } catch { setError(lang === 'zh' ? '检查清单导出失败，请稍后重试。' : 'The checklist could not be exported. Try again.'); }
+      journey.exportSuccess('csv');
+    } catch { journey.exportFailure('csv'); setError(lang === 'zh' ? '检查清单导出失败，请稍后重试。' : 'The checklist could not be exported. Try again.'); }
   };
 
 		  return (
@@ -451,9 +449,9 @@ export function HomePage({ lang }: { lang: Language }) {
 			
 			                  {/* 仅保留单一模型按钮（Gemini 2.5 Flash） */}
 			                  <div className="space-y-3">
-			                    <FreeMaterialConsent lang={lang} checked={freeConsent} onChange={setFreeConsent} />
+			                    <FreeMaterialConsent lang={lang} checked={freeConsent} onChange={(checked) => { setFreeConsent(checked); journey.consent(checked); }} />
                   <Button
-			                      onClick={() => handleAnalyze('default')}
+			                      data-clarity-unmask="true" onClick={() => handleAnalyze('default')}
 			                      disabled={!file || !freeConsent}
 			                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
 			                      size="lg"
@@ -652,7 +650,7 @@ export function HomePage({ lang }: { lang: Language }) {
 
             {/* 操作按钮 */}
 	            <div className="flex gap-4 flex-wrap">
-	              <Button onClick={handleDownload} size="lg">
+	              <Button data-clarity-unmask="true" onClick={handleDownload} size="lg">
 	                <Download className="mr-2 h-5 w-5" />
 	                {t.downloadChecklist}
 	              </Button>

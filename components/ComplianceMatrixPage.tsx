@@ -2,7 +2,8 @@
 
 import { ToolGuide } from '@/components/ToolGuide';
 import { FreeMaterialConsent } from "@/components/FreeMaterialConsent";
-import { toolEvent } from "@/lib/tool-events";
+import { useToolJourney } from "@/components/useToolJourney";
+import { uploadValidationMessage } from "@/lib/tool-journey";
 import { useState } from "react";
 import Link from "next/link";
 import {
@@ -205,6 +206,7 @@ export default function ComplianceMatrixPage({
   lang?: Language;
 }) {
   const [freeConsent, setFreeConsent] = useState(false);
+  const journey = useToolJourney('matrix', lang);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -319,17 +321,11 @@ export default function ComplianceMatrixPage({
     const selected = e.target.files?.[0];
     if (!selected) return;
 
-    const lowerName = selected.name.toLowerCase();
-    // 如果是旧版 .doc（而不是 .docx），前端直接提示暂不支持
-    if (lowerName.endsWith(".doc") && !lowerName.endsWith(".docx")) {
-      setFile(null);
-      setItems([]);
-      setError(
-        "当前在线版本暂不支持直接解析 .doc，请先在本地另存为 .docx 或导出为 PDF 后再上传。This online version does not currently support parsing .doc files directly. Please save the file as .docx or export it to PDF locally before uploading.",
-      );
-      try {
-        (e.target as HTMLInputElement).value = "";
-      } catch {}
+    const rejected = journey.selectFile(selected);
+    if (rejected) {
+      setFile(null); setItems([]); setFreeConsent(false);
+      setError(uploadValidationMessage(rejected, lang));
+      e.target.value = '';
       return;
     }
 
@@ -343,7 +339,7 @@ export default function ComplianceMatrixPage({
 	    if (!file) return;
 
 	    // Authentication is not required for compliance matrix generation in the current low-volume phase.
-    toolEvent('matrix', 'start');
+    journey.begin();
     setLoading(true);
     setError("");
     setItems([]);
@@ -356,7 +352,7 @@ export default function ComplianceMatrixPage({
       formData.append("mode", "matrix");
       formData.append("lang", lang);
 
-      const res = await fetch("/api/analyze", {
+      const res = await journey.request("/api/analyze", {
         method: "POST",
         body: formData,
       });
@@ -373,11 +369,11 @@ export default function ComplianceMatrixPage({
 	      }
 
       const data = await res.json();
-      if (!Array.isArray(data.items) || !data.items.length) throw new Error(lang === "zh" ? "未能生成可核实的要求清单，请检查文件或重试。" : "No verifiable requirements were produced.");
+      if (!Array.isArray(data.items) || !data.items.length) { journey.invalidResult(); throw new Error(lang === "zh" ? "未能生成可核实的要求清单，请检查文件或重试。" : "No verifiable requirements were produced."); }
       setItems(data.items as MatrixItem[]);
-      toolEvent('matrix', 'success');
+      journey.success();
     } catch (err: any) {
-      toolEvent('matrix', 'failure');
+      journey.failure();
       if (err?.message) {
         setError(err.message);
       } else {
@@ -394,10 +390,12 @@ export default function ComplianceMatrixPage({
 
   const handleDownloadGov = async () => {
     if (!items.length) return;
+    journey.exportBegin('xlsx_gov');
     try {
       await downloadGovMatrix(items);
-      toolEvent('matrix', 'download', 'xlsx_gov');
+      journey.exportSuccess('xlsx_gov');
     } catch (err: any) {
+      journey.exportFailure('xlsx_gov');
       console.error("Download Gov template failed:", err);
       setError(
         lang === "zh"
@@ -409,10 +407,12 @@ export default function ComplianceMatrixPage({
 
   const handleDownloadEnterprise = async () => {
     if (!items.length) return;
+    journey.exportBegin('xlsx_enterprise');
     try {
       await downloadEnterpriseMatrix(items);
-      toolEvent('matrix', 'download', 'xlsx_enterprise');
+      journey.exportSuccess('xlsx_enterprise');
     } catch (err: any) {
+      journey.exportFailure('xlsx_enterprise');
       console.error("Download Enterprise template failed:", err);
       setError(
         lang === "zh"
@@ -423,6 +423,7 @@ export default function ComplianceMatrixPage({
   };
 
   const updateItem = (requirementId: string, updates: Partial<MatrixItem>) => {
+    journey.edit(updates.complianceStatus !== undefined ? 'status' : 'notes');
     setItems((prev) =>
       prev.map((item) =>
         item.requirementId === requirementId ? { ...item, ...updates } : item,
@@ -584,9 +585,9 @@ export default function ComplianceMatrixPage({
                     </div>
                   )}
 
-                  <FreeMaterialConsent lang={lang} checked={freeConsent} onChange={setFreeConsent} />
+                  <FreeMaterialConsent lang={lang} checked={freeConsent} onChange={(checked) => { setFreeConsent(checked); journey.consent(checked); }} />
                   <Button
-                    onClick={handleGenerate}
+                    data-clarity-unmask="true" onClick={handleGenerate}
                     disabled={!file || loading || !freeConsent}
                     className="w-full bg-[#0066CC] hover:bg-[#005BB8] text-white"
                     size="lg"
@@ -640,7 +641,7 @@ export default function ComplianceMatrixPage({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
-                      onClick={handleDownloadGov}
+                      data-clarity-unmask="true" onClick={handleDownloadGov}
                       variant="outline"
                       size="sm"
                       className="border-slate-200 text-slate-600 hover:border-[#0066CC] hover:text-[#0066CC]"
@@ -650,7 +651,7 @@ export default function ComplianceMatrixPage({
                       {lang === "zh" ? "下载 Gov 模板" : "Download Gov template"}
                     </Button>
                     <Button
-                      onClick={handleDownloadEnterprise}
+                      data-clarity-unmask="true" onClick={handleDownloadEnterprise}
                       variant="outline"
                       size="sm"
                       className="border-slate-200 text-slate-600 hover:border-[#0066CC] hover:text-[#0066CC]"

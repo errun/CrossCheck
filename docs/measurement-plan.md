@@ -35,3 +35,21 @@ GA4基于现有浏览器标识衡量用户，清除标识和跨设备使用可�
 - 视需要在GA4登记tool、file_format、resource、language等自定义维度，并将tool_success作为关键使用事件。当前连接为只读，本分支未修改GA4管理配置。
 - 重新提交站点地图并检查主要页面的Google所选规范网址；记录上线日期后再观察收录、点击与成功使用变化。
 - 本分支不承诺搜索排名、AI引用或流量增长；相关效果必须在上线及实际观察后判断。
+
+## 行为过程补齐（待审核分支）
+
+三种工具各自记录：view、file_selected、file_rejected、consent、start、wait、success、failure、export_start、export_failure、download、copy/copy_failure、export_requested、result_edit、exit。只有有意义的步骤触发事件，不记录每次键盘输入。
+
+- 保留既有`tool_success`作为成功次数口径。`rfpai_{scanner|matrix|writer}_{step}`用于按工具分析漏斗，不能与`tool_success`相加。工具专属事件名可直接用GA4标准eventName维度查询，不依赖新增自定义维度。
+- 参数限定为工具、界面语言、PDF/docx/其他、文件大小区间、操作阶段、固定失败类别、等待区间、编辑字段及耗时。禁止文件名、文档正文、用户输入、原始异常、报价、投标人和持久用户身份。
+- 等待事件在15/30/60/120秒各最多一次，只有前台可见时发送。耗时是本次处理的墙钟耗时，不是前台活跃时间。exit仅表示观察到页面离开，不能直接称为放弃或取消；客户端退出事件也可能漏报。卸载后返回的结果不计为已展示成功。
+- API在响应头给出解析和生成耗时，结构化运行日志区分document/generation阶段及安全失败码。单次随机attempt_id仅用于客户端请求与运行日志关联，不上报GA4或Clarity，不用作用户身份。日志保存期取决于现有托管方案，未新增付费存储。
+- `?qa=1`把该标签页标为测试，`?qa=0`清除；test_mode参数为qa/live，Clarity有对应固定标签。未建立测试标记前的历史QA不能自动洗成自然用户数据。
+- GA与Clarity脚本只在rfpai.io和www.rfpai.io加载，预览和本地不加载。脚本被拦截、离线或浏览器标识变化时仍可能丢失，不能承诺100%用户行为覆盖或跨设备识别。
+- 默认页面内容用data-clarity-mask遮蔽；仅固定公开资料、说明与操作按钮明确放开。文档内容、文件名、输出及错误区不放开。Clarity事件只包含固定步骤，既有平衡遮蔽设置不等于全部文档文字都已遮蔽；新代码上线后需用虚构材料验证新录制。
+
+### GA4需要登记的字段（尚未修改账户）
+
+只读metadata核验当前没有自定义维度或指标。为支持报表，拟登记事件维度：tool、ui_language、test_mode、reason_code、failure_stage、wait_bucket、input_format、size_bucket、edit_field、file_format、phase、resource；数值指标：elapsed_ms、parse_ms、generation_ms、export_ms，单位毫秒。将tool_success设为关键事件。上线及账户管理修改须按项目授权执行，登记后需等待平台处理，不能补回历史缺失数据。
+
+验收分三层：自动测试与真实本地处理；受保护预览与下载；获批上线后，在qa标记下核实GA4实时事件和Clarity新录制遮蔽。只通过前两层不能声称第三层已完成。
