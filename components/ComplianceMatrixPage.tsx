@@ -396,6 +396,7 @@ export default function ComplianceMatrixPage({
     if (!items.length) return;
     try {
       await downloadGovMatrix(items);
+      toolEvent('matrix', 'download', 'xlsx_gov');
     } catch (err: any) {
       console.error("Download Gov template failed:", err);
       setError(
@@ -410,6 +411,7 @@ export default function ComplianceMatrixPage({
     if (!items.length) return;
     try {
       await downloadEnterpriseMatrix(items);
+      toolEvent('matrix', 'download', 'xlsx_enterprise');
     } catch (err: any) {
       console.error("Download Enterprise template failed:", err);
       setError(

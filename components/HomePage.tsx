@@ -302,6 +302,7 @@ export function HomePage({ lang }: { lang: Language }) {
       if (!response.ok) throw new Error('export failed');
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement('a'); link.href = url; link.download = 'bid-checklist.csv'; link.click(); URL.revokeObjectURL(url);
+      toolEvent('scanner', 'download', 'csv');
     } catch { setError(lang === 'zh' ? '检查清单导出失败，请稍后重试。' : 'The checklist could not be exported. Try again.'); }
   };
 

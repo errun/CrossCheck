@@ -3,6 +3,8 @@ import type { Language } from '@/types';
 import demo from '@/lib/demo-data.json';
 import { SITE_URL, CONTENT_UPDATED } from '@/lib/seo';
 import { JsonLd } from './JsonLd';
+import { ResourceDownload } from './ResourceDownload';
+import type { ResourceId } from '@/lib/resources';
 
 export function ResourcePage({ lang, kind }: { lang: Language; kind: 'example' | 'template' }) {
   const zh = lang === 'zh', example = kind === 'example', prefix = zh ? '/zh' : '';
@@ -13,7 +15,7 @@ export function ResourcePage({ lang, kind }: { lang: Language; kind: 'example' |
     { q: zh ? '模板中的“已响应”能由AI自动确认吗？' : 'Can AI confirm that a requirement is compliant?', a: zh ? '不能仅凭生成结果确认。逐条核对实际方案和证据，再由责任人填写响应状态。企业资质、报价、签章及附件均需自行核实。' : 'Generated output is not proof of compliance. A responsible reviewer must check the actual proposal and evidence before recording status. Verify qualifications, pricing, signatures and attachments yourself.' },
     { q: zh ? '新版本招标文件如何处理？' : 'How should I handle an RFP amendment?', a: zh ? '保存旧版原文与工作簿，对新版重新提取后逐条比较新增、删除和变更要求。新提取的行号可能变化，不能仅凭行号判断同一条款。' : 'Keep the previous source and workbook. Extract the new version and compare added, removed and changed clauses. Row IDs can change between extractions, so do not match requirements by row number alone.' },
   ];
-  const download = (href: string, label: string, note: string) => <a href={href} download className="group rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"><span className="block font-semibold text-blue-800 group-hover:underline">{label} <span aria-hidden="true">↓</span></span><span className="mt-1 block text-sm leading-6 text-slate-600">{note}</span></a>;
+  const download = (resource: ResourceId, label: string, note: string) => <ResourceDownload resource={resource} lang={lang} label={label} note={note} />;
   const issueNames: Record<string, string> = { CONSISTENCY_PROJECT: 'Conflicting project IDs', CONSISTENCY_COMPANY: 'Conflicting bidder names', CONSISTENCY_PRICE: 'Conflicting total prices', CONSISTENCY_DELIVERY: 'Conflicting delivery periods', CONSISTENCY_VALIDITY: 'Conflicting validity periods', CONSISTENCY_WARRANTY: 'Conflicting warranty periods', CONSISTENCY_RESPONSE: 'Conflicting response times', CONSISTENCY_RESOLUTION: 'Conflicting resolution times', MISSING_AUTHORIZATION: 'Explicitly missing authorization' };
   return <div className="min-h-screen bg-slate-50 text-slate-900">
     <JsonLd data={{ '@context': 'https://schema.org', '@type': 'WebPage', name: title, url: SITE_URL + here, inLanguage: zh ? 'zh-Hans' : 'en', dateModified: CONTENT_UPDATED, publisher: { '@type': 'Organization', name: 'RFPAI', url: SITE_URL }, about: { '@type': 'Thing', name: 'RFP compliance matrix and bid document review' } }} />
@@ -45,11 +47,11 @@ export function ResourcePage({ lang, kind }: { lang: Language; kind: 'example' |
         <section className="mt-12" aria-labelledby="downloads">
           <h2 id="downloads" className="text-2xl font-semibold">{zh ? '1. 下载原文和示例结果' : '1. Download sources and sample outputs'}</h2>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {download('/samples/fictional-tender.pdf', zh ? '虚构招标文件 · PDF' : 'Fictional RFP · PDF', zh ? '2页，供矩阵和草稿工具试用。' : '2 pages. Input for the matrix and draft tools.')}
-            {download('/samples/fictional-bid.pdf', zh ? '预埋问题投标文件 · PDF' : 'Bid with planted issues · PDF', zh ? '2页，供标书检查工具试用。' : '2 pages. Input for the bid checker.')}
-            {download('/samples/sample-compliance-matrix.xlsx', zh ? '16条要求矩阵 · Excel' : '16-clause sample matrix · Excel', zh ? '响应状态未填写，保留原文及来源。' : 'Source references retained. Compliance stays blank.')}
-            {download('/samples/sample-checklist.csv', zh ? '9条检查提示 · CSV' : '9-alert sample checklist · CSV', zh ? '包含冲突原文及人工核实建议。' : 'Conflicting excerpts and review suggestions.')}
-            {download('/samples/sample-bid-draft.docx', zh ? '待完善投标草稿 · Word' : 'Draft with placeholders · Word', zh ? '16条待确认响应；不代表附件已齐全。' : '16 pending responses; attachments are not verified.')}
+            {download('tender_demo', zh ? '虚构招标文件 · PDF' : 'Fictional RFP · PDF', zh ? '2页，供矩阵和草稿工具试用。' : '2 pages. Input for the matrix and draft tools.')}
+            {download('bid_demo', zh ? '预埋问题投标文件 · PDF' : 'Bid with planted issues · PDF', zh ? '2页，供标书检查工具试用。' : '2 pages. Input for the bid checker.')}
+            {download('matrix_example', zh ? '16条要求矩阵 · Excel' : '16-clause sample matrix · Excel', zh ? '响应状态未填写，保留原文及来源。' : 'Source references retained. Compliance stays blank.')}
+            {download('checklist_example', zh ? '9条检查提示 · CSV' : '9-alert sample checklist · CSV', zh ? '包含冲突原文及人工核实建议。' : 'Conflicting excerpts and review suggestions.')}
+            {download('draft_example', zh ? '待完善投标草稿 · Word' : 'Draft with placeholders · Word', zh ? '16条待确认响应；不代表附件已齐全。' : '16 pending responses; attachments are not verified.')}
           </div>
         </section>
         <section className="mt-12" aria-labelledby="matrix-results">
@@ -64,8 +66,8 @@ export function ResourcePage({ lang, kind }: { lang: Language; kind: 'example' |
         <section className="mt-12 rounded-2xl bg-slate-900 p-6 text-white md:p-8"><h2 className="text-2xl font-semibold">{zh ? '4. 把草稿交给责任人完善' : '4. Complete the draft with the responsible reviewer'}</h2><p className="mt-4 max-w-3xl text-sm leading-7 text-slate-200">{zh ? '示例Word包含原文要求、16条待确认响应、拟实施方案，以及企业名称、报价、资质和授权附件的待填写项。生成草稿不能证明企业能力、附件齐全或最终格式合格。PDF导出使用浏览器打印，本次样本未完成PDF文件验收。' : 'The sample Word file contains source requirements, 16 pending responses, a proposed plan and placeholders for bidder identity, pricing, qualifications and authorization. A draft does not verify capability, attachments or final formatting. PDF export uses browser printing and was not file-verified in this example.'}</p><Link href={`${prefix}/bid-writer#upload`} className="mt-5 inline-block rounded-lg bg-white px-4 py-3 text-sm font-semibold text-slate-900">{zh ? '打开投标草稿工具' : 'Open bid draft tool'} →</Link></section>
       </> : <>
         <section className="mt-10 grid gap-4 md:grid-cols-2" aria-label={zh ? '下载Excel空白模板' : 'Download blank Excel templates'}>
-          {download('/samples/gov-compliance-matrix.xlsx', zh ? 'Gov合规矩阵空白模板 · Excel' : 'Gov compliance matrix template · Excel', zh ? '含原文、章节、页码、响应状态、责任人、证据及复核栏。FAR/DFARS等字段按项目适用性填写。' : 'Includes source, page, status, owner, evidence and review fields. Use FAR/DFARS fields only where applicable.')}
-          {download('/samples/enterprise-compliance-matrix.xlsx', zh ? 'Enterprise合规矩阵空白模板 · Excel' : 'Enterprise compliance matrix template · Excel', zh ? '含客户优先级、来源、响应策略、责任人、备注、页码及响应状态。' : 'Includes customer priority, source, strategy, owner, notes, page and compliance status.')}
+          {download('gov_blank', zh ? 'Gov合规矩阵空白模板 · Excel' : 'Gov compliance matrix template · Excel', zh ? '含原文、章节、页码、响应状态、责任人、证据及复核栏。FAR/DFARS等字段按项目适用性填写。' : 'Includes source, page, status, owner, evidence and review fields. Use FAR/DFARS fields only where applicable.')}
+          {download('enterprise_blank', zh ? 'Enterprise合规矩阵空白模板 · Excel' : 'Enterprise compliance matrix template · Excel', zh ? '含客户优先级、来源、响应策略、责任人、备注、页码及响应状态。' : 'Includes customer priority, source, strategy, owner, notes, page and compliance status.')}
         </section>
         <section className="mt-12" aria-labelledby="fill-in"><h2 id="fill-in" className="text-2xl font-semibold">{zh ? '如何填写，而不是只收集条款' : 'How to fill it in, not just collect clauses'}</h2><div className="mt-5 grid gap-4 md:grid-cols-2">{(zh ? [
           ['原文与来源', '保留条件、数字、否定和例外，不把“不得转包”改成“可以分包”。PDF记录真实页码；Word没有可靠分页时记录章节。'],

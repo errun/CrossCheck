@@ -690,6 +690,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
     if (!draft) return;
     try {
       await navigator.clipboard.writeText(draft);
+      toolEvent('writer', 'copy');
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
@@ -733,6 +734,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      toolEvent('writer', 'download', 'docx');
     } catch (err: any) {
       console.error("Bid writer export docx error:", err);
       setError(
@@ -764,6 +766,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 	      printWindow.document.write(html);
 	      printWindow.document.close();
 	      printWindow.focus();
+      toolEvent('writer', 'export_requested', 'pdf_print');
 	      // 略微延迟后再触发打印，确保样式已加载
 	      setTimeout(() => {
 	        try {
