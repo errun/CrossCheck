@@ -20,6 +20,33 @@ global.fetch = async (url, options) => {
 process.env.OPENROUTER_API_KEY = 'unit-test-placeholder';
 const reply = data => { modelReply = { choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(data) } }], usage: { cost: 0 } }; };
 
+test('English bid detects eight conflict fields and missing authorization with English feedback', async()=>{
+ const doc=await readDocument(new File([fs.readFileSync(path.join(fixtures,'bid-errors-en.docx'))],'bid.docx'));
+ const errors=consistencyErrors(doc.text,[],'en');assert.equal(errors.length,9);
+ for(const id of ['PROJECT','COMPANY','PRICE','DELIVERY','VALIDITY','WARRANTY','RESPONSE','RESOLUTION'])assert.ok(errors.some(e=>e.rule_id==='CONSISTENCY_'+id));
+ assert.ok(errors.every(e=>e.page_no===0));assert.ok(errors.every(e=>!/[\u4e00-\u9fff]/.test(e.title+e.suggestion)));
+ assert.equal(consistencyErrors('Total price: USD 120,000\nFinal total price: USD 120000\nWarranty: 3 years\nWarranty: 36 months',[],'en').length,0);
+});
+
+test('grounded USD model facts retain their numeric values',()=>{
+ const text='Offer A is USD 120000\nOffer B is USD 130000';
+ const facts=[{field:'price',value:'USD 120000',quote:'Offer A is USD 120000'},{field:'price',value:'USD 130000',quote:'Offer B is USD 130000'}];
+ assert.equal(consistencyErrors(text,facts,'en').length,1);
+});
+
+test('malformed factual items and covered requirements without evidence fail closed',async()=>{
+ const {analyzeWithGemini,compareRfpAndBid}=require('../lib/gemini.ts');
+ const text='This is a synthetic procurement document containing sufficiently long public test material. '.repeat(2);
+ reply({facts:[{field:'price',value:null,quote:'invalid'}]});await assert.rejects(analyzeWithGemini(text),e=>e.code==='INVALID_AI_RESULT');
+ reply({items:[{requirement_id:'1',status:'covered',evidence:'',comment:'assumed'}]});await assert.rejects(compareRfpAndBid([{requirementId:'1',requirementText:'Must provide evidence.'}],text),e=>e.code==='INVALID_AI_RESULT');
+});
+
+test('matrix section labels must directly locate the quoted clause',async()=>{
+ const text='[PAGE 1]\n第1.1条 系统必须保留日志180天。\n第2.1条 背景说明。'+'公开虚构测试材料。'.repeat(10);
+ reply({items:[{requirementText:'系统必须保留日志180天。',sourceSection:'第2.1条'}]});
+ const result=await extractComplianceMatrix(text);assert.equal(result.items[0].sourceSection,'');assert.equal(result.items[0].sourcePage,1);
+});
+
 test('PDF source markers and eight planted issue categories, without known false positives', async () => {
   const file = new File([fs.readFileSync(path.join(fixtures, 'bid-errors.pdf'))], 'bid.pdf');
   const doc = await readDocument(file);

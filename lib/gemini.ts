@@ -14,8 +14,9 @@ Return JSON {"facts":[{"field":"project|company|price|delivery|validity|warranty
 Extract EVERY occurrence of project identifiers, bidder legal names, total prices, delivery durations, bid validity durations, warranty durations, incident response and resolution times. Exclude dates from durations. Only quoted evidence, no inferred requirements. Keep values and quotes in the document's language. Output language: ${lang}.
 <document>\n${text}\n</document>`);
   if (!Array.isArray(result.facts)) invalidResult();
-  const facts: Fact[] = result.facts.filter((f: any) => f && typeof f.field === 'string' && typeof f.value === 'string' && typeof f.quote === 'string');
-  return { errors: consistencyErrors(text, facts) };
+  if (result.facts.some((f: any) => !f || !['project', 'company', 'price', 'delivery', 'validity', 'warranty', 'response', 'resolution'].includes(f.field) || typeof f.value !== 'string' || !f.value.trim() || typeof f.quote !== 'string' || !f.quote.trim())) invalidResult();
+  const facts: Fact[] = result.facts;
+  return { errors: consistencyErrors(text, facts, lang) };
 }
 
 export async function extractComplianceMatrix(text: string, _model = 'default', lang: Language = 'zh'): Promise<{ items: MatrixItem[] }> {
@@ -35,7 +36,7 @@ Preserve the source language, numbers, conditions and negations. Each requiremen
     const key = compact(quote);
     if (seen.has(key)) continue;
     seen.add(key);
-    items.push({ requirementId: String(items.length + 1), requirementText: quote, sourceSection: typeof raw.sourceSection === 'string' && compact(text).includes(compact(raw.sourceSection)) ? raw.sourceSection : '', sourcePage: page || null, complianceStatus: '', commentsNotes: lang === 'zh' ? '待投标人核实并填写响应证据' : 'Bidder confirmation and evidence required' });
+    items.push({ requirementId: String(items.length + 1), requirementText: quote, sourceSection: typeof raw.sourceSection === 'string' && compact(text).includes(compact(raw.sourceSection) + compact(quote)) ? raw.sourceSection : '', sourcePage: page || null, complianceStatus: '', commentsNotes: lang === 'zh' ? '待投标人核实并填写响应证据' : 'Bidder confirmation and evidence required' });
   }
   return { items };
 }
@@ -50,7 +51,7 @@ Use ${lang === 'zh' ? 'Chinese' : 'English'}. Use proposed action wording (拟�
   const plan = result.plan.trim();
   if (/已提供|已取得|已提交|完全响应|无偏离|fully compliant|already (?:provided|submitted)|guarantee bond|投标保证金/i.test(plan)) invalidResult();
   const name = text.match(/(?:项目名称|Project name)\s*[:：]\s*([^\n。]+)/i)?.[1] || text.split('\n').find(line => /招标文件|request for proposal/i.test(line))?.replace(/招标文件|request for proposal/ig, '').trim() || (lang === 'zh' ? '[项目名称需用户填写]' : '[Project name required]');
-  const projectId = text.match(/(?:项目编号|Project (?:ID|number))\s*[:：]\s*([A-Za-z0-9_-]+)/i)?.[1] || '[需用户填写]';
+  const projectId = text.match(/(?:项目编号|Project (?:ID|number))\s*[:：]\s*([A-Za-z0-9_-]+)/i)?.[1] || (lang === 'zh' ? '[需用户填写]' : '[To be completed]');
   const clean = (s: string) => s.replace(/\|/g, '／').replace(/[\r\n]+/g, ' ');
   const zh = lang === 'zh';
   const heading = zh ? '# 投标文件草稿\n\n[结构需根据招标文件最终确认]\n\n这是待填写和审核的草稿。以下响应状态均待确认，不代表已具备资格、已提供附件或已作出承诺。' : '# Bid proposal draft\n\n[Structure must be confirmed against the final RFP]\n\nThis draft requires bidder completion and review. No qualification, attachment or compliance is verified.';
@@ -64,7 +65,7 @@ export async function compareRfpAndBid(requirements: MatrixItem[], text: string,
   if (!Array.isArray(response.items) || response.items.length !== requirements.length) invalidResult();
   const items: BidComparisonItem[] = requirements.map((requirement, index) => {
     const r = response.items.find((item: any) => String(item.requirement_id) === requirement.requirementId);
-    if (!r || !['covered', 'partially_covered', 'missing'].includes(r.status) || typeof r.evidence !== 'string' || (r.evidence && sourcePage(text, r.evidence) < 0)) invalidResult();
+    if (!r || !['covered', 'partially_covered', 'missing'].includes(r.status) || typeof r.evidence !== 'string' || (r.status !== 'missing' && !r.evidence.trim()) || (r.evidence && sourcePage(text, r.evidence) < 0)) invalidResult();
     return { id: index + 1, requirement_id: requirement.requirementId, requirement_text: requirement.requirementText, status: r.status, evidence: r.evidence, comment: String(r.comment || '') };
   });
   return { items, summary: { total: items.length, covered: items.filter(i => i.status === 'covered').length, partially_covered: items.filter(i => i.status === 'partially_covered').length, missing: items.filter(i => i.status === 'missing').length } };

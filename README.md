@@ -2,7 +2,7 @@
 
 ## 免费版修复分支
 
-正式项目为 Vercel `erruns-projects/cross-check`，代码仓库为 `errun/CrossCheck`。此分支只供审核与预览，禁止直接合并或生产发布。
+正式项目为 Vercel `erruns-projects/cross-check`，代码仓库为 `errun/CrossCheck`。生产发布须先通过审核并获得用户明确授权。
 
 - 免费版仅供公开或虚构材料。上传前必须确认材料不含保密或个人信息，并知晓免费模型提供方可能留存及用于训练；接口同样要求 `free_consent=true`。本分支不修改 OpenRouter 账号隐私设置或消费额度。
 - 三个功能默认使用 `nvidia/nemotron-3.5-super-vl:free`。可分别配置 `RFP_SCAN_MODEL`、`RFP_MATRIX_MODEL`、`RFP_DRAFT_MODEL`，但必须为 `:free` 且官方目录的输入、输出及请求价格均为0。没有付费降级。

@@ -5,7 +5,7 @@ import { errorResponse, requirePublicMaterialConsent } from '@/lib/free-ai';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 180;
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   let lang: 'zh' | 'en' = 'zh';

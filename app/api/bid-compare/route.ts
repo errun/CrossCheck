@@ -4,7 +4,7 @@ import { readDocument, MAX_FILE_BYTES } from '@/lib/document-input';
 import { errorResponse, requirePublicMaterialConsent, ToolError } from '@/lib/free-ai';
 
 export const runtime = 'nodejs';
-export const maxDuration = 180;
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   let lang: 'zh' | 'en' = 'zh';
