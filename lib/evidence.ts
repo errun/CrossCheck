@@ -15,6 +15,25 @@ const labels: Record<string, string> = { project: '项目编号', company: '投�
 const englishLabels: Record<string, string> = { project: 'Project ID', company: 'Bidder name', price: 'Total price', delivery: 'Delivery period', validity: 'Bid validity', warranty: 'Warranty period', response: 'Incident response time', resolution: 'Resolution deadline' };
 const normalize = (value: string) => value.replace(/[，,\s]/g, '').toLowerCase();
 
+function valueIndex(quote: string, value: string) {
+  for (let index = quote.indexOf(value); index >= 0; index = quote.indexOf(value, index + 1)) {
+    if (/^\d/.test(value) && /[\d.]/.test(quote[index - 1] || '')) continue;
+    if (/\d$/.test(value) && /[\d.]/.test(quote[index + value.length] || '')) continue;
+    return index;
+  }
+  return -1;
+}
+
+function isComponentPrice(fact: Fact) {
+  if (fact.field !== 'price') return false;
+  const quote = compact(fact.quote), value = compact(fact.value);
+  const index = valueIndex(quote, value);
+  if (index < 0) return false;
+  const labelsBeforeValue = [...quote.slice(0, index).matchAll(/小计|单价|分项合计|总报价|总价|grandtotal|totalprice|subtotal|unitprice/gi)];
+  const last = labelsBeforeValue[labelsBeforeValue.length - 1]?.[0] || '';
+  return /^(?:小计|单价|subtotal|unitprice)$/i.test(last);
+}
+
 export function extractFacts(text: string): Fact[] {
   const facts: Fact[] = [];
   const add = (field: string, value: string, quote: string) => facts.push({ field, value, quote: quote.trim() });
@@ -42,7 +61,7 @@ export function extractFacts(text: string): Fact[] {
 
 export function consistencyErrors(text: string, supplied: Fact[] = [], lang: Language = 'zh'): ErrorItem[] {
   const extracted = extractFacts(text);
-  const grounded = supplied.filter(f => labels[f.field] && typeof f.value === 'string' && typeof f.quote === 'string' && sourcePage(text, f.quote) >= 0 && compact(f.quote).includes(compact(f.value)));
+  const grounded = supplied.filter(f => labels[f.field] && typeof f.value === 'string' && typeof f.quote === 'string' && sourcePage(text, f.quote) >= 0 && valueIndex(compact(f.quote), compact(f.value)) >= 0 && !isComponentPrice(f));
   const candidates = [...extracted, ...grounded].map(f => {
     if (f.field === 'company') return { ...f, value: f.value.replace(/[（(](?:虚构|fictional)[）)]/gi, '').trim() };
     if (f.field === 'project') return f;

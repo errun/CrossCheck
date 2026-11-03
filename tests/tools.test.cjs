@@ -50,6 +50,17 @@ test('validity duration does not absorb delivery deadlines in the same sentence'
  assert.equal(result.length,1);assert.equal(result[0].rule_id,'CONSISTENCY_VALIDITY');assert.match(result[0].suggestion,/90 \/ 60/);
 });
 
+test('component subtotals mislabeled by the model do not conflict with a correct grand total',()=>{
+ const text='含税总报价为120000元。软件服务小计100000元，实施服务小计20000元。';
+ const facts=[{field:'price',value:'100000元',quote:'软件服务小计100000元'},{field:'price',value:'20000元',quote:'实施服务小计20000元'}];
+ assert.equal(consistencyErrors(text,facts).length,0);
+ const together='总报价120000元，软件小计100000元，实施小计20000元';
+ assert.equal(consistencyErrors(together,[{field:'price',value:'100000元',quote:together},{field:'price',value:'20000元',quote:together}]).length,0);
+ const english='Total price: USD 120000\nSoftware subtotal: USD 100000\nDelivery subtotal: USD 20000';
+ assert.equal(consistencyErrors(english,[{field:'price',value:'USD 100000',quote:'Software subtotal: USD 100000'},{field:'price',value:'USD 20000',quote:'Delivery subtotal: USD 20000'}],'en').length,0);
+ assert.ok(consistencyErrors('总报价130000元。软件服务小计100000元，实施服务小计20000元。',facts).some(e=>e.rule_id==='PRICE_ARITHMETIC'));
+});
+
 test('malformed factual items and covered requirements without evidence fail closed',async()=>{
  const {analyzeWithGemini,compareRfpAndBid}=require('../lib/gemini.ts');
  const text='This is a synthetic procurement document containing sufficiently long public test material. '.repeat(2);
