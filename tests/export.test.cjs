@@ -2,6 +2,11 @@ require('./register.cjs');
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const XLSX=require('xlsx');
+test('English checklist exports English headers and source labels',async()=>{
+ const {POST}=require('../app/api/export/route.ts');const {NextRequest}=require('next/server');
+ const response=await POST(new NextRequest('http://test/api/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lang:'en',errors:[{priority:'P1',rule_id:'CONSISTENCY_PRICE',title:'Total price is inconsistent',snippet:'Total price: USD 120000',suggestion:'Verify the original quotation.',confidence:1,page_no:0}]})}));
+ assert.equal(response.status,200);const csv=await response.text();assert.match(csv,/Number,Rule ID,Evidence,Risk,Suggestion,Source,Confidence/);assert.match(csv,/Source paragraph/);assert.ok(!/[\u4e00-\u9fff]/.test(csv));
+});
 test('checklist CSV escapes every user-controlled column and preserves document locations', async()=>{
  const {POST}=require('../app/api/export/route.ts');
  const {NextRequest}=require('next/server');
