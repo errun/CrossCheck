@@ -20,13 +20,13 @@ export const metadata: Metadata = {
   ],
   
   alternates: {
-    canonical: "[https://rfpai.io/compliance-matrix](https://rfpai.io/compliance-matrix)",
+    canonical: "/compliance-matrix",
   },
   
   openGraph: {
     title: "Use AI to Shred RFPs for Free - No Account Needed",
     description: "Upload your PDF and get a compliance matrix instantly. No credit card, no email required. Supports Section L & M extraction.",
-    url: "[https://rfpai.io/compliance-matrix](https://rfpai.io/compliance-matrix)",
+    url: "/compliance-matrix",
     siteName: "CrossCheck AI",
     locale: "en_US",
     type: "website",
