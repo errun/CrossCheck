@@ -1,5 +1,6 @@
 "use client";
 
+import { ToolGuide } from '@/components/ToolGuide';
 import { FreeMaterialConsent } from "@/components/FreeMaterialConsent";
 import { toolEvent } from "@/lib/tool-events";
 import { useState } from "react";
@@ -689,6 +690,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
     if (!draft) return;
     try {
       await navigator.clipboard.writeText(draft);
+      toolEvent('writer', 'copy');
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
@@ -732,6 +734,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      toolEvent('writer', 'download', 'docx');
     } catch (err: any) {
       console.error("Bid writer export docx error:", err);
       setError(
@@ -763,6 +766,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 	      printWindow.document.write(html);
 	      printWindow.document.close();
 	      printWindow.focus();
+      toolEvent('writer', 'export_requested', 'pdf_print');
 	      // 略微延迟后再触发打印，确保样式已加载
 	      setTimeout(() => {
 	        try {
@@ -788,7 +792,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 		        {/* 顶部导航：返回首页（暂不显示登录 / 积分区） */}
 		        <div className="flex items-center justify-between max-w-5xl mx-auto mb-4 gap-4">
 		          <Link
-		            href={lang === "zh" ? "/zh" : "/"}
+		            href={lang === "zh" ? "/zh" : "/en"}
 		            className="flex items-center text-sm text-slate-600 hover:text-blue-600"
 		          >
 		            <span className="mr-1 text-base">←</span>
@@ -807,13 +811,13 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
           <p className="text-slate-600 text-base max-w-2xl mx-auto">
             {lang === "zh"
               ? "上传招标文件，提取要求并生成待完善的投标草稿。企业资料、报价及响应证据需自行核实补齐。"
-              : "Upload your RFP and the AI will draft a complete English proposal that you can further refine and format in Word."}
+              : "Upload a public or fictional RFP for a draft with source requirements, a proposed plan and placeholders. Complete and verify bidder details before use."}
           </p>
         </header>
 
         {/* 上传区 */}
         <div className="max-w-3xl mx-auto mt-8">
-          <Card className="border border-dashed border-slate-300 bg-white/70 backdrop-blur-sm">
+        <Card id="upload" className="border border-dashed border-slate-300 bg-white/70 backdrop-blur-sm">
             <CardHeader>
               <div className="flex items-center gap-2 mb-1">
                 <FileText className="w-5 h-5 text-blue-600" />
@@ -924,6 +928,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
             </div>
           </div>
         )}
+        <ToolGuide lang={lang} tool="writer" />
       </div>
     </div>
   );

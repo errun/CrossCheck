@@ -1,5 +1,6 @@
 'use client';
 
+import { ToolGuide } from '@/components/ToolGuide';
 import { FreeMaterialConsent } from "@/components/FreeMaterialConsent";
 import { toolEvent } from "@/lib/tool-events";
 import { useState } from 'react';
@@ -12,7 +13,7 @@ import { ErrorItem, Language } from '@/types';
 
 // 应用版本号（包含日期时间）。
 // 未来如果在部署环境中设置 NEXT_PUBLIC_APP_VERSION，则会优先使用环境变量的值。
-const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'v2025-12-19 00:00';
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
 
 const translations: Record<Language, {
 	  appName: string;
@@ -61,8 +62,8 @@ const translations: Record<Language, {
 		  faqA2: string;
 }> = {
 		  zh: {
-		    appName: '标书全能王',
-			    heroTitle: '自动化标书合规性与错误扫描',
+		    appName: 'RFPAI',
+			    heroTitle: '核对标书中的报价、编号与期限',
 			    heroSubtitle: '',
 			    // 首页功能卡片：招标文件提取
 			    matrixLinkLabel: '招标文件提取',
@@ -72,7 +73,7 @@ const translations: Record<Language, {
 			    bidWriterLinkDesc: '根据招标文件一键生成标准化投标文件草稿，并支持导出 Word 模板。',
 			    // 首页第一个功能卡片：投标文件检查
 			    uploadCardTitle: '投标文件检查',
-	    uploadCardDesc: '支持 PDF / Word(.docx)，最大4MB、50页、6万字符',
+	    uploadCardDesc: '支持 PDF / Word(.docx)，最大4MB、PDF最多50页、6万字符',
     uploadPlaceholder: '点击选择 PDF / Word 文件',
     analyzeButton: '标书分析',
     analyzingTitle: '正在分析中...',
@@ -94,7 +95,7 @@ const translations: Record<Language, {
     sectionP2Desc: '可能导致扣分或不利评审',
     sectionP3Title: '✅ 格式问题（P3）',
     sectionP3Desc: '建议优化项',
-    pageLabel: (pageNo) => `第 ${pageNo} 页`,
+    pageLabel: (pageNo) => pageNo > 0 ? `第 ${pageNo} 页` : '原文段落',
     errorContentLabel: '错误内容：',
     correctTextLabel: '✓ 正确写法：',
     suggestionPrefix: '💡 ',
@@ -107,21 +108,21 @@ const translations: Record<Language, {
 	    faqTitle: '常见问题：标书合规性与废标风险',
 	    faqQ1: '标书检查器是如何工作的？',
 	    faqA1:
-	      '您上传标书和/或 RFP 后，系统会用 AI 对全文进行逐页分析，检查文件内的价格、编号、期限和身份信息一致性，并提示明确缺失的授权材料。',
+	      '上传一份投标文件，系统检查其内部价格、项目编号、期限和投标人信息的一致性，并提示明确缺失的授权材料。此入口不将投标文件与另一份招标文件逐条对照。',
 	    faqQ2: '它可以帮我避免废标吗？',
 	    faqA2:
-	      '没有任何工具能 100% 保证中标，但通过在提交前自动发现 P1 致命风险和重要合规缺口，它可以大幅降低因低级错误或漏项而导致的废标可能性。',
+	      '检查提示可帮助定位需要核实的不一致信息，但不能确认投标资格、附件齐全或保证中标。请对照招标原文，由责任人完成最终审核。',
   },
 		  en: {
-		    appName: 'rfpai',
-			    heroTitle: 'Automated Proposal Compliance & Error Scanner',
+		    appName: 'RFPAI',
+			    heroTitle: 'Check your bid before you submit',
 		    heroSubtitle: '',
 		    matrixLinkLabel: 'AI Compliance Matrix Generator',
 		    matrixLinkDesc: 'Upload only the RFP to extract mandatory requirements into an Excel compliance checklist.',
 		    bidWriterLinkLabel: 'AI Bid Draft Generator',
-		    bidWriterLinkDesc: 'Let AI draft a full proposal document from the RFP and export it to Word.',
+		    bidWriterLinkDesc: 'Build a draft from the RFP, complete missing details and export to Word.',
 		    uploadCardTitle: 'Upload Bid Document',
-	    uploadCardDesc: 'Supports PDF / Word (.docx), up to 4MB',
+	    uploadCardDesc: 'PDF / Word (.docx): max 4MB, 50 PDF pages, 60,000 characters',
     uploadPlaceholder: 'Click to choose a PDF / Word file',
     analyzeButton: 'Analyze Bid Document',
     analyzingTitle: 'Analyzing...',
@@ -130,7 +131,7 @@ const translations: Record<Language, {
     ruleStatusRunning: 'Running',
 	    rulePriceConsistency: 'Pricing Consistency Check',
 	    ruleTypos: 'Identifiers and terms',
-	    ruleIdentity: 'Instant RFP Cross-Reference',
+	    ruleIdentity: 'Bidder Identity Consistency',
     totalPagesLabel: 'Total pages',
     p1Label: 'Critical issues',
     p2Label: 'Major issues',
@@ -143,7 +144,7 @@ const translations: Record<Language, {
     sectionP2Desc: 'Issues that may cause score deduction or disadvantages',
     sectionP3Title: '✅ Formatting issues (P3)',
     sectionP3Desc: 'Recommended improvements',
-    pageLabel: (pageNo) => `Page ${pageNo}`,
+    pageLabel: (pageNo) => pageNo > 0 ? `Page ${pageNo}` : 'Source paragraph',
     errorContentLabel: 'Error snippet:',
     correctTextLabel: '✓ Correct text:',
     suggestionPrefix: '💡 ',
@@ -156,10 +157,10 @@ const translations: Record<Language, {
 	    faqTitle: 'FAQ: Bid checker & AI proposal compliance',
 	    faqQ1: 'How does the bid checker work?',
 	    faqA1:
-	      'Upload your bid proposal and RFP, and our AI proposal analysis engine cross-references them to detect pricing inconsistencies, missing mandatory requirements, formatting problems, and identity issues before you submit.',
+	      'Upload one bid document to check internally conflicting prices, project IDs, bidder names and deadlines, plus explicitly missing authorization. This checker does not compare your bid against a separate RFP or verify every mandatory requirement.',
 	    faqQ2: 'Can it prevent disqualification?',
 	    faqA2:
-	      'No tool can guarantee an award, but by automatically flagging P1-level compliance gaps and common bid errors before submission, the checker can significantly reduce the risk of disqualification.',
+	      'Alerts identify inconsistencies for review. They do not establish eligibility, verify every attachment or guarantee an award. Check the RFP and have a responsible reviewer approve the final submission.',
   },
 };
 
@@ -301,6 +302,7 @@ export function HomePage({ lang }: { lang: Language }) {
       if (!response.ok) throw new Error('export failed');
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement('a'); link.href = url; link.download = 'bid-checklist.csv'; link.click(); URL.revokeObjectURL(url);
+      toolEvent('scanner', 'download', 'csv');
     } catch { setError(lang === 'zh' ? '检查清单导出失败，请稍后重试。' : 'The checklist could not be exported. Try again.'); }
   };
 
@@ -316,15 +318,15 @@ export function HomePage({ lang }: { lang: Language }) {
 		            <div className="leading-tight">
 			              <p className="text-sm font-semibold text-slate-900">{t.appName}</p>
 			              <p className="text-xs text-slate-600">AI RFP &amp; bid compliance copilot</p>
-			              <p className="text-[10px] text-slate-500 mt-0.5">
+			              {APP_VERSION && <p className="text-[10px] text-slate-500 mt-0.5">
 			                {lang === 'zh' ? `版本：${APP_VERSION}` : `Version: ${APP_VERSION}`}
-			              </p>
+			              </p>}
 		            </div>
 		          </div>
 		          <div className="flex items-center gap-6">
 		            <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">
 		              <Link
-		                href={lang === 'zh' ? '/zh' : '/'}
+		                href={lang === 'zh' ? '/zh' : '/en'}
 		                className="hover:text-slate-900 transition-colors"
 		              >
 		                {lang === 'zh' ? '标书扫描器' : 'Bid Scanner'}
@@ -352,7 +354,7 @@ export function HomePage({ lang }: { lang: Language }) {
 		                  {t.langSwitchZh}
 		                </Link>
 		                <Link
-				                  href="/?lang=en"
+				                  href="/en"
 		                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
 		                    lang === 'en'
 		                      ? 'bg-blue-600 text-white border-blue-500 shadow-sm'
@@ -371,25 +373,26 @@ export function HomePage({ lang }: { lang: Language }) {
 		        <header className="mb-12 flex flex-col items-center text-center gap-4">
 		          <div className="hidden inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-1 text-xs font-medium text-amber-700 shadow-sm">
 		            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-		            <span>{lang === 'zh' ? ' 标书合规性检查 · 废标风险预防' : 'AI proposal compliance · Disqualification risk guard'}</span>
+		            <span>{lang === 'zh' ? 'RFPAI · 标书检查' : 'AI proposal compliance · Disqualification risk guard'}</span>
 		          </div>
 		          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">
 		            {t.heroTitle}
 		          </h1>
 		          <p className="max-w-2xl text-base md:text-lg text-slate-600">
-		            {t.heroSubtitle}
+		            {t.heroSubtitle || (lang === 'zh' ? '定位文件内不一致的原文，下载检查清单，再核实和修正。' : 'Find conflicting source statements, download a checklist and review your revisions.')}
 		          </p>
 		          <p className="text-base md:text-lg font-semibold text-slate-700">
-		            Don&apos;t let a decimal point ruin your month of work.
+		            {lang === 'zh' ? '投标文件检查，不替代招标要求逐条对照或最终人工审核。' : 'Internal consistency checks support your review; they do not certify compliance with an RFP.'}
 		          </p>
           
 		        </header>
+
 
 	      {/* 上传区 + 合规矩阵入口 */}
 	        {!analyzing && !result && (
 	          <div className="max-w-2xl mx-auto space-y-4">
 	            {/* 标书扫描器上传卡片 */}
-	            <Card className="bg-white border-slate-200 shadow-sm rounded-xl">
+	            <Card id="upload" className="bg-white border-slate-200 shadow-sm rounded-xl">
 	              <CardHeader>
 	                <CardTitle>{t.uploadCardTitle}</CardTitle>
 	                <CardDescription>
@@ -501,7 +504,7 @@ export function HomePage({ lang }: { lang: Language }) {
 		            </Card>
 
 		            {/* 投标文件生成（Bid Writer）入口卡片，仅在中文首页展示 */}
-		            {lang === 'zh' && (
+		            {(
 		              <Card className="bg-slate-900 text-white border-slate-800 shadow-sm rounded-xl">
 		                <CardHeader>
 		                  <CardTitle className="flex items-center gap-2">
@@ -513,13 +516,13 @@ export function HomePage({ lang }: { lang: Language }) {
 		                </CardHeader>
 		                <CardContent>
 		                  <div className="flex justify-end">
-		                    <Link href="/zh/bid-writer" className="inline-flex">
+		                    <Link href={lang === 'zh' ? '/zh/bid-writer' : '/bid-writer'} className="inline-flex">
 		                      <Button
 		                        variant="secondary"
 		                        size="sm"
 		                        className="inline-flex items-center gap-1"
 		                      >
-		                        <span>前往投标文件生成</span>
+		                        <span>{lang === 'zh' ? '前往投标文件生成' : 'Open bid draft generator'}</span>
 		                        <ArrowRight className="h-4 w-4" />
 		                      </Button>
 		                    </Link>
@@ -676,7 +679,8 @@ export function HomePage({ lang }: { lang: Language }) {
           </div>
         )}
 	      </div>
-		      {/* FAQ Section */}
+		      <ToolGuide lang={lang} tool="scanner" />
+          {/* FAQ Section */}
 		      <section className="mt-16 bg-white/80 rounded-2xl shadow-sm border border-slate-200">
 		        <div className="px-6 py-6 md:px-8 md:py-8 max-w-5xl mx-auto">
 		          <h2 className="text-2xl font-semibold text-slate-900 mb-4">

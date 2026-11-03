@@ -14,18 +14,18 @@ const siteUrl = "https://rfpai.io";
 const GA_MEASUREMENT_ID = "G-4M4FRSZPJH";
 
 export const metadata: Metadata = {
-	title: "RFPCheck - AI Automated Compliance & Proposal Analysis",
+	title: "RFPAI — Bid Review & RFP Compliance Tools",
 	description:
 		"Streamline your RFP process with AI. Automated compliance checks, cross-referencing, and risk analysis.",
 	metadataBase: new URL(siteUrl),
 	openGraph: {
-		title: "RFPCheck - AI Automated Compliance & Proposal Analysis",
+		title: "RFPAI — Bid Review & RFP Compliance Tools",
 		description:
 			"Streamline your RFP process with AI. Automated compliance checks, cross-referencing, and risk analysis.",
 		type: "website",
 		url: siteUrl,
 		locale: "en_US",
-		siteName: "RFPCheck",
+		siteName: "RFPAI",
 	},
 	// 关键词标签有助于中文搜索引擎（如百度）理解页面主题
 	keywords: [
@@ -38,13 +38,7 @@ export const metadata: Metadata = {
 		"bid proposal checker",
 		"tender document review",
 	],
-	alternates: {
-		canonical: "/",
-		languages: {
-			en: "/",
-			"zh-Hans": "/zh",
-		},
-	},
+
 };
 
 		export default function RootLayout({
