@@ -1,5 +1,6 @@
 "use client";
 
+import { ToolGuide } from '@/components/ToolGuide';
 import { FreeMaterialConsent } from "@/components/FreeMaterialConsent";
 import { toolEvent } from "@/lib/tool-events";
 import { useState } from "react";
@@ -279,8 +280,8 @@ export default function ComplianceMatrixPage({
   const comparisonCards = [
     {
       title: isZh ? "速度" : "Speed",
-      manual: isZh ? "人工 (4 小时)" : "Manual (4h)",
-      ai: isZh ? "AI (2 分钟)" : "AI (2m)",
+      manual: isZh ? "人工复制粘贴" : "Manual copy-paste",
+      ai: isZh ? "提取草稿后人工复核" : "Draft extraction + review",
     },
     {
       title: isZh ? "风险" : "Risk",
@@ -496,21 +497,22 @@ export default function ComplianceMatrixPage({
             <div className="max-w-4xl mx-auto text-center space-y-4">
               <h1 className="text-3xl md:text-5xl font-bold text-slate-900">
                 {lang === "zh"
-                  ? "秒级生成合规矩阵 'Draft Zero' 初稿"
-                  : "Generate Your Compliance Matrix 'Draft Zero' in Seconds."}
+                  ? "把招标要求整理成可复核的合规矩阵"
+                  : "Build an RFP compliance matrix you can review."}
               </h1>
               <p className="text-base md:text-lg text-slate-600">
                 {lang === "zh"
-                  ? "停止复制粘贴，立即提取“必须/应当”条款并生成可编辑的 Excel 检查表。"
-                  : "Stop copy-pasting. Instantly extract 'Must/Shall' requirements into an editable Excel checklist."}
+                  ? "提取强制要求、定位原文、填写响应状态，再导出可编辑的Excel检查表。"
+                  : "Extract must/shall clauses with source references. Review responses, then download an editable Excel workbook."}
               </p>
               {lang === "en" && (
                 <p className="text-sm text-slate-500 italic">
-                  Audit-ready, traceable, defensible — not just extraction.
+                  Original wording. Source references. Your compliance decision.
                 </p>
               )}
             </div>
 
+            <ToolGuide lang={lang} tool="matrix" />
             <Card
               id="upload"
               className="w-full max-w-2xl mx-auto bg-white border border-slate-200 shadow-2xl rounded-2xl"
@@ -772,13 +774,13 @@ export default function ComplianceMatrixPage({
               </h2>
               <p className="text-base md:text-lg text-slate-600">
                 {lang === "zh" ? (
-                  "像 RFPAI 这样的 AI 生成器把最费时的步骤自动化。上传 PDF 或 Word 文件，系统会从 PDF 转为 Excel 结构化矩阵，几分钟即可完成。它是实用的提案管理自动化，让团队把时间投入到策略、定位与赢单主题。"
+                  "像 RFPAI 这样的 AI 生成器把最费时的步骤自动化。上传 PDF 或 Word 文件，系统会从 PDF 转为 Excel 结构化矩阵，生成后需要逐条复核。它是实用的提案管理自动化，让团队把时间投入到策略、定位与赢单主题。"
                 ) : (
                   <>
                     An AI-powered generator like RFPAI replaces the most tedious
                     step with automation. Upload a PDF or Word file and the system
                     converts content from PDF to Excel, producing a structured
-                    matrix in minutes. This is practical{" "}
+                    matrix for human review. This is practical{" "}
                     <strong>Proposal management automation</strong> that helps
                     teams save time on setup and focus on strategy, positioning,
                     and win themes.
@@ -813,11 +815,10 @@ export default function ComplianceMatrixPage({
                     Speed
                   </h3>
                   <p className="mt-2 text-slate-600 leading-relaxed">
-                    Because the AI reads the full document, it extracts every
-                    Must/Shall requirement consistently and returns the same
-                    structure across bids. You can rerun the process when an
-                    addendum arrives and get a refreshed matrix instead of
-                    rebuilding from scratch, which keeps schedules predictable.
+                    The tool extracts a draft matrix from the uploaded document.
+                    Review every clause against the source, including exceptions
+                    and addenda. After a new extraction, compare the rows and IDs
+                    with your previous version before updating the master file.
                   </p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
@@ -883,7 +884,7 @@ export default function ComplianceMatrixPage({
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="h-5 w-5 text-[#0066CC] flex-shrink-0 mt-0.5" />
-                    <span className="text-slate-600">Stable requirement IDs (no re-numbering)</span>
+                    <span className="text-slate-600">Review row IDs after each new extraction</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="h-5 w-5 text-[#0066CC] flex-shrink-0 mt-0.5" />
@@ -968,7 +969,7 @@ export default function ComplianceMatrixPage({
                 </>
               ) : (
                 <p className="text-base md:text-lg text-slate-600">
-                  合规矩阵以 Excel 输出，便于筛选、分配与审阅，确保每一条要求都有清晰的响应位置。
+                  合规矩阵以 Excel 输出，便于筛选、分配与审阅，便于逐条核对要求及响应位置。
                 </p>
               )}
             </div>
@@ -1092,8 +1093,8 @@ export default function ComplianceMatrixPage({
             </h2>
             <p className="text-slate-600">
               {lang === "zh"
-                ? "上传 RFP，几分钟内得到可编辑的合规矩阵。"
-                : "Upload an RFP and get an editable compliance matrix in minutes."}
+                ? "上传公开或虚构RFP，生成后逐条复核，再导出Excel。"
+                : "Upload a public or fictional RFP. Review the extracted clauses, then export Excel."}
             </p>
             <Button
               onClick={handleScrollToUpload}
@@ -1103,7 +1104,7 @@ export default function ComplianceMatrixPage({
               {lang === "zh" ? "开始生成" : "Generate Draft Zero"}
             </Button>
             <footer className="pt-6 text-xs text-slate-600">
-              (c) {new Date().getFullYear()} RFP Compliance Matrix Generator
+              (c) {new Date().getFullYear()} RFPAI
             </footer>
           </div>
         </section>

@@ -1,5 +1,6 @@
 'use client';
 
+import { ToolGuide } from '@/components/ToolGuide';
 import { FreeMaterialConsent } from "@/components/FreeMaterialConsent";
 import { toolEvent } from "@/lib/tool-events";
 import { useState } from 'react';
@@ -62,7 +63,7 @@ const translations: Record<Language, {
 }> = {
 		  zh: {
 		    appName: 'RFPAI',
-			    heroTitle: '自动化标书合规性与错误扫描',
+			    heroTitle: '核对标书中的报价、编号与期限',
 			    heroSubtitle: '',
 			    // 首页功能卡片：招标文件提取
 			    matrixLinkLabel: '招标文件提取',
@@ -114,12 +115,12 @@ const translations: Record<Language, {
   },
 		  en: {
 		    appName: 'RFPAI',
-			    heroTitle: 'Automated Proposal Compliance & Error Scanner',
+			    heroTitle: 'Check your bid before you submit',
 		    heroSubtitle: '',
 		    matrixLinkLabel: 'AI Compliance Matrix Generator',
 		    matrixLinkDesc: 'Upload only the RFP to extract mandatory requirements into an Excel compliance checklist.',
 		    bidWriterLinkLabel: 'AI Bid Draft Generator',
-		    bidWriterLinkDesc: 'Let AI draft a full proposal document from the RFP and export it to Word.',
+		    bidWriterLinkDesc: 'Build a draft from the RFP, complete missing details and export to Word.',
 		    uploadCardTitle: 'Upload Bid Document',
 	    uploadCardDesc: 'Supports PDF / Word (.docx), up to 4MB',
     uploadPlaceholder: 'Click to choose a PDF / Word file',
@@ -371,19 +372,20 @@ export function HomePage({ lang }: { lang: Language }) {
 		        <header className="mb-12 flex flex-col items-center text-center gap-4">
 		          <div className="hidden inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-1 text-xs font-medium text-amber-700 shadow-sm">
 		            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-		            <span>{lang === 'zh' ? ' 标书合规性检查 · 废标风险预防' : 'AI proposal compliance · Disqualification risk guard'}</span>
+		            <span>{lang === 'zh' ? 'RFPAI · 标书检查' : 'AI proposal compliance · Disqualification risk guard'}</span>
 		          </div>
 		          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900">
 		            {t.heroTitle}
 		          </h1>
 		          <p className="max-w-2xl text-base md:text-lg text-slate-600">
-		            {t.heroSubtitle}
+		            {t.heroSubtitle || (lang === 'zh' ? '定位文件内不一致的原文，下载检查清单，再核实和修正。' : 'Find conflicting source statements, download a checklist and review your revisions.')}
 		          </p>
 		          <p className="text-base md:text-lg font-semibold text-slate-700">
-		            Don&apos;t let a decimal point ruin your month of work.
+		            {lang === 'zh' ? '投标文件检查，不替代招标要求逐条对照或最终人工审核。' : 'Internal consistency checks support your review; they do not certify compliance with an RFP.'}
 		          </p>
           
 		        </header>
+            <ToolGuide lang={lang} tool="scanner" />
 
 	      {/* 上传区 + 合规矩阵入口 */}
 	        {!analyzing && !result && (
@@ -501,7 +503,7 @@ export function HomePage({ lang }: { lang: Language }) {
 		            </Card>
 
 		            {/* 投标文件生成（Bid Writer）入口卡片，仅在中文首页展示 */}
-		            {lang === 'zh' && (
+		            {(
 		              <Card className="bg-slate-900 text-white border-slate-800 shadow-sm rounded-xl">
 		                <CardHeader>
 		                  <CardTitle className="flex items-center gap-2">
@@ -513,13 +515,13 @@ export function HomePage({ lang }: { lang: Language }) {
 		                </CardHeader>
 		                <CardContent>
 		                  <div className="flex justify-end">
-		                    <Link href="/zh/bid-writer" className="inline-flex">
+		                    <Link href={lang === 'zh' ? '/zh/bid-writer' : '/bid-writer'} className="inline-flex">
 		                      <Button
 		                        variant="secondary"
 		                        size="sm"
 		                        className="inline-flex items-center gap-1"
 		                      >
-		                        <span>前往投标文件生成</span>
+		                        <span>{lang === 'zh' ? '前往投标文件生成' : 'Open bid draft generator'}</span>
 		                        <ArrowRight className="h-4 w-4" />
 		                      </Button>
 		                    </Link>

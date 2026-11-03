@@ -1,5 +1,6 @@
 "use client";
 
+import { ToolGuide } from '@/components/ToolGuide';
 import { FreeMaterialConsent } from "@/components/FreeMaterialConsent";
 import { toolEvent } from "@/lib/tool-events";
 import { useState } from "react";
@@ -807,13 +808,14 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
           <p className="text-slate-600 text-base max-w-2xl mx-auto">
             {lang === "zh"
               ? "上传招标文件，提取要求并生成待完善的投标草稿。企业资料、报价及响应证据需自行核实补齐。"
-              : "Upload your RFP and the AI will draft a complete English proposal that you can further refine and format in Word."}
+              : "Upload a public or fictional RFP for a draft with source requirements, a proposed plan and placeholders. Complete and verify bidder details before use."}
           </p>
         </header>
 
         {/* 上传区 */}
         <div className="max-w-3xl mx-auto mt-8">
-          <Card className="border border-dashed border-slate-300 bg-white/70 backdrop-blur-sm">
+          <ToolGuide lang={lang} tool="writer" />
+        <Card className="border border-dashed border-slate-300 bg-white/70 backdrop-blur-sm">
             <CardHeader>
               <div className="flex items-center gap-2 mb-1">
                 <FileText className="w-5 h-5 text-blue-600" />
