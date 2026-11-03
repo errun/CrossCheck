@@ -1,5 +1,7 @@
 "use client";
 
+import { FreeMaterialConsent } from "@/components/FreeMaterialConsent";
+import { toolEvent } from "@/lib/tool-events";
 import { useState } from "react";
 import Link from "next/link";
 import {
@@ -201,6 +203,7 @@ export default function ComplianceMatrixPage({
 }: {
   lang?: Language;
 }) {
+  const [freeConsent, setFreeConsent] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -282,7 +285,7 @@ export default function ComplianceMatrixPage({
     {
       title: isZh ? "风险" : "Risk",
       manual: isZh ? "人为错误" : "Human Error",
-      ai: isZh ? "100% 覆盖" : "100% Coverage",
+      ai: isZh ? "原文定位，需人工复核" : "Source references; review required",
     },
     {
       title: isZh ? "可追溯性" : "Traceability",
@@ -330,6 +333,7 @@ export default function ComplianceMatrixPage({
     }
 
     setFile(selected);
+    setFreeConsent(false);
     setError("");
     setItems([]);
   };
@@ -338,12 +342,14 @@ export default function ComplianceMatrixPage({
 	    if (!file) return;
 
 	    // Authentication is not required for compliance matrix generation in the current low-volume phase.
+    toolEvent('matrix', 'start');
     setLoading(true);
     setError("");
     setItems([]);
 
     try {
       const formData = new FormData();
+      formData.append("free_consent", String(freeConsent));
       formData.append("file", file);
       formData.append("model", "default");
       formData.append("mode", "matrix");
@@ -366,9 +372,11 @@ export default function ComplianceMatrixPage({
 	      }
 
       const data = await res.json();
-      setItems((data.items || []) as MatrixItem[]);
+      if (!Array.isArray(data.items) || !data.items.length) throw new Error(lang === "zh" ? "未能生成可核实的要求清单，请检查文件或重试。" : "No verifiable requirements were produced.");
+      setItems(data.items as MatrixItem[]);
+      toolEvent('matrix', 'success');
     } catch (err: any) {
-      console.error("Compliance matrix error:", err);
+      toolEvent('matrix', 'failure');
       if (err?.message) {
         setError(err.message);
       } else {
@@ -573,9 +581,10 @@ export default function ComplianceMatrixPage({
                     </div>
                   )}
 
+                  <FreeMaterialConsent lang={lang} checked={freeConsent} onChange={setFreeConsent} />
                   <Button
                     onClick={handleGenerate}
-                    disabled={!file || loading}
+                    disabled={!file || loading || !freeConsent}
                     className="w-full bg-[#0066CC] hover:bg-[#005BB8] text-white"
                     size="lg"
                   >
@@ -602,7 +611,7 @@ export default function ComplianceMatrixPage({
                     <span className="mx-2">·</span>
                     <span className="inline-flex items-center gap-1">
                       <CheckCircle2 className="h-4 w-4 text-[#0066CC]" />
-                      {lang === "zh" ? "数据不用于训练" : "Data not trained on"}
+                      {lang === "zh" ? "仅限公开材料" : "Public material only"}
                     </span>
                   </div>
                 </div>
@@ -1025,8 +1034,8 @@ export default function ComplianceMatrixPage({
             </div>
             <p className="text-base md:text-lg text-slate-600">
               {lang === "zh"
-                ? "企业级隐私。数据仅在内存中处理，不会保存。"
-                : "Enterprise-Grade Privacy. Data processed in memory, never stored."}
+                ? "免费模型提供方可能留存材料并用于训练；请勿上传保密或个人信息。"
+                : "Free providers may retain material and use it for training. Do not upload confidential or personal data."}
             </p>
           </div>
         </section>

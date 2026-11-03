@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		const items = Array.isArray(body?.items) ? (body.items as MatrixItem[]) : [];
+		if (!items.length || items.length > 1000 || items.some(item => typeof item.requirementText !== 'string' || !item.requirementText.trim() || typeof item.requirementId !== 'string')) return NextResponse.json({ error: 'Invalid requirements' }, { status: 400 });
 		const buffer = buildMatrixWorkbook(template, items);
 		// NextResponse expects a Web BodyInit. Node.js Buffer is runtime-compatible
 		// but TypeScript can reject Buffer/SharedArrayBuffer types.

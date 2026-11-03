@@ -1,5 +1,6 @@
 "use client";
 
+import { FreeMaterialConsent } from "@/components/FreeMaterialConsent";
 import { useState } from "react";
 import type React from "react";
 import Link from "next/link";
@@ -23,7 +24,8 @@ import {
 	import type { BidComparisonItem, BidComparisonSummary, Language } from "@/types";
 
 	export default function BidComparePage({ lang }: { lang: Language }) {
-		const [rfpFile, setRfpFile] = useState<File | null>(null);
+		const [freeConsent, setFreeConsent] = useState(false);
+  const [rfpFile, setRfpFile] = useState<File | null>(null);
 		const [bidFile, setBidFile] = useState<File | null>(null);
 		const [loading, setLoading] = useState(false);
 		const [error, setError] = useState<string>("");
@@ -54,6 +56,7 @@ import {
 		}
 
 		if (type === "rfp") setRfpFile(selected);
+    setFreeConsent(false);
 		if (type === "bid") setBidFile(selected);
 		setError("");
 		setItems([]);
@@ -71,6 +74,7 @@ import {
 
 		try {
 			const formData = new FormData();
+      formData.append("free_consent", String(freeConsent));
 			formData.append("rfp_file", rfpFile);
 			formData.append("bid_file", bidFile);
 			formData.append("model", "default");
@@ -91,8 +95,8 @@ import {
 					if (res.status === 413) {
 						message =
 							lang === "zh"
-								? "文件太大，超过当前在线版本的上传大小上限。建议控制在 100MB 以内，或拆分为多个文件后再上传。"
-								: "File is too large for the current online version. Please keep each file under 100MB or split it into multiple documents.";
+								? "文件太大，超过当前在线版本的上传大小上限。建议控制在 4MB 以内，或拆分为多个文件后再上传。"
+								: "File is too large for the current online version. Please keep each file under 4MB or split it into multiple documents.";
 					} else {
 						message =
 							data?.error ||
@@ -177,8 +181,8 @@ import {
 								</div>
 								<div className="text-[11px] text-slate-500">
 									{lang === "zh"
-										? "支持 PDF / Word (.docx)，建议控制在 100MB 以内"
-										: "PDF / Word (.docx), recommended size ≤ 100MB"}
+										? "支持 PDF / Word (.docx)，建议控制在 4MB 以内"
+										: "PDF / Word (.docx), recommended size ≤ 4MB"}
 								</div>
 								<input
 									type="file"
@@ -216,8 +220,8 @@ import {
 								</div>
 								<div className="text-[11px] text-slate-500">
 									{lang === "zh"
-										? "支持 PDF / Word (.docx)，建议控制在 100MB 以内"
-										: "PDF / Word (.docx), recommended size ≤ 100MB"}
+										? "支持 PDF / Word (.docx)，建议控制在 4MB 以内"
+										: "PDF / Word (.docx), recommended size ≤ 4MB"}
 								</div>
 								<input
 									type="file"
@@ -233,9 +237,10 @@ import {
 				{/* 操作区 + 错误提示 */}
 				<div className="max-w-5xl mx-auto mt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 					<div className="flex items-center gap-3">
-						<Button
+						<FreeMaterialConsent lang={lang} checked={freeConsent} onChange={setFreeConsent} />
+                  <Button
 							onClick={handleCompare}
-							disabled={loading || !rfpFile || !bidFile}
+							disabled={loading || !rfpFile || !bidFile || !freeConsent}
 							className="inline-flex items-center gap-2"
 						>
 							{loading && <Loader2 className="w-4 h-4 animate-spin" />}

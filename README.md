@@ -1,5 +1,19 @@
 # 标书全能王（rfpai）- 标书智能审查系统
 
+## 免费版修复分支
+
+正式项目为 Vercel `erruns-projects/cross-check`，代码仓库为 `errun/CrossCheck`。此分支只供审核与预览，禁止直接合并或生产发布。
+
+- 免费版仅供公开或虚构材料。上传前必须确认材料不含保密或个人信息，并知晓免费模型提供方可能留存及用于训练；接口同样要求 `free_consent=true`。本分支不修改 OpenRouter 账号隐私设置或消费额度。
+- 三个功能默认使用 `nvidia/nemotron-3.5-super-vl:free`。可分别配置 `RFP_SCAN_MODEL`、`RFP_MATRIX_MODEL`、`RFP_DRAFT_MODEL`，但必须为 `:free` 且官方目录的输入、输出及请求价格均为0。没有付费降级。
+- 保留现有 `OPENROUTER_API_KEY`。不提交 `.env`、Vercel会话文件或密钥；测试和预览不记录真实文档内容。
+- 当前支持 PDF / `.docx`，最大4MB、50页、6万字符。超限明确拒绝，不截断后冒充完整结果。PDF按实际页定位，Word使用原文段落，不猜测分页。
+- 检查主要核对明示的编号、主体、金额、期限等内部一致性及明确缺失的授权材料；不替代招标文件逐条对照、资格核验或最终人工审阅。
+- 草稿包含原文要求和待确认响应，不将未知企业资料、资质、报价或附件写成已齐全；不承诺满足招标文件的全部格式。
+- 免费额度检查读取 OpenRouter 账号共享计数，预留20%；并发可能短暂跨过预留阈值，提供方执行硬上限。429最多有限重试；没有新增全站共享限流存储，也不声称实例内计数等于严格全站限额。
+
+验证：`npm ci --ignore-scripts`、`npm test`、`npm run typecheck`、`npm run build`。`tests/fixtures/`全部为虚构材料；单元测试模拟模型网络调用，不使用真实密钥。真实模型与浏览器证据另行交付审核。
+
 AI 驱动的标书自动审查与可视化分析系统，基于 Next.js 14 和 Gemini AI。
 
 Deployed with Vercel: [rfp-cwdglbljl-erruns-projects.vercel.app](https://rfp-cwdglbljl-erruns-projects.vercel.app) | Original tool: https://www.rfpai.io

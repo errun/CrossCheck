@@ -3,6 +3,15 @@ import { cacheManager } from '@/lib/cache';
 import { ErrorItem } from '@/types';
 import { logger } from '@/lib/logger';
 
+// The browser sends the reviewed result; export works across serverless instances.
+export async function POST(request: NextRequest) {
+  try {
+    const { errors } = await request.json();
+    if (!Array.isArray(errors) || errors.length > 1000 || errors.some((e: any) => !e || !['P1', 'P2', 'P3'].includes(e.priority) || typeof e.snippet !== 'string' || typeof e.suggestion !== 'string' || typeof e.title !== 'string' || typeof e.rule_id !== 'string' || !Number.isFinite(e.confidence) || !Number.isInteger(e.page_no))) return NextResponse.json({ error: 'Invalid checklist' }, { status: 400 });
+    return new NextResponse(generateCSV(errors), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="bid-checklist.csv"', 'Cache-Control': 'no-store' } });
+  } catch { return NextResponse.json({ error: 'Invalid checklist' }, { status: 400 }); }
+}
+
 /**
  * GET /api/export?doc_id=xxx&format=csv
  * 导出检查清单
@@ -101,5 +110,6 @@ function generateCSV(errors: ErrorItem[]): string {
  * 转义 CSV 字段中的特殊字符
  */
 function escapeCSV(text: string): string {
-  return text.replace(/"/g, '""');
+  const safe = /^[\s]*[=+@-]/.test(text) ? `'${text}` : text;
+  return safe.replace(/"/g, '""');
 }
