@@ -106,7 +106,7 @@ export default function FontCheckerPage({ lang }: { lang: Language }) {
         {/* 顶部返回 + 标题区域 */}
         <div className="flex items-center justify-between gap-4 mb-4">
           <Link
-            href={lang === "zh" ? "/zh" : "/"}
+            href={lang === "zh" ? "/zh" : "/en"}
             className="flex items-center text-sm text-slate-600 hover:text-blue-600"
           >
             <span className="mr-1 text-base">←</span>

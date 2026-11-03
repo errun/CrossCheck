@@ -461,7 +461,7 @@ export default function ComplianceMatrixPage({
           <div className="mx-auto max-w-6xl space-y-10">
             <div className="flex flex-col items-center gap-4 md:flex-row md:items-center md:justify-between">
               <Link
-                href={lang === "zh" ? "/zh" : "/"}
+                href={lang === "zh" ? "/zh" : "/en"}
                 className="flex items-center text-sm text-slate-600 hover:text-[#0066CC]"
               >
                 <span className="mr-1 text-base">←</span>
@@ -480,7 +480,7 @@ export default function ComplianceMatrixPage({
                     中文
                   </Link>
                   <Link
-                    href="/compliance-matrix?lang=en"
+                    href="/compliance-matrix"
                     className={`ml-1 px-3 py-1 rounded-full text-sm border ${
                       lang === "en"
                         ? "bg-[#0066CC] text-white border-[#0066CC]"

@@ -12,7 +12,7 @@ import { ErrorItem, Language } from '@/types';
 
 // 应用版本号（包含日期时间）。
 // 未来如果在部署环境中设置 NEXT_PUBLIC_APP_VERSION，则会优先使用环境变量的值。
-const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || 'v2025-12-19 00:00';
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
 
 const translations: Record<Language, {
 	  appName: string;
@@ -61,7 +61,7 @@ const translations: Record<Language, {
 		  faqA2: string;
 }> = {
 		  zh: {
-		    appName: '标书全能王',
+		    appName: 'RFPAI',
 			    heroTitle: '自动化标书合规性与错误扫描',
 			    heroSubtitle: '',
 			    // 首页功能卡片：招标文件提取
@@ -113,7 +113,7 @@ const translations: Record<Language, {
 	      '没有任何工具能 100% 保证中标，但通过在提交前自动发现 P1 致命风险和重要合规缺口，它可以大幅降低因低级错误或漏项而导致的废标可能性。',
   },
 		  en: {
-		    appName: 'rfpai',
+		    appName: 'RFPAI',
 			    heroTitle: 'Automated Proposal Compliance & Error Scanner',
 		    heroSubtitle: '',
 		    matrixLinkLabel: 'AI Compliance Matrix Generator',
@@ -316,15 +316,15 @@ export function HomePage({ lang }: { lang: Language }) {
 		            <div className="leading-tight">
 			              <p className="text-sm font-semibold text-slate-900">{t.appName}</p>
 			              <p className="text-xs text-slate-600">AI RFP &amp; bid compliance copilot</p>
-			              <p className="text-[10px] text-slate-500 mt-0.5">
+			              {APP_VERSION && <p className="text-[10px] text-slate-500 mt-0.5">
 			                {lang === 'zh' ? `版本：${APP_VERSION}` : `Version: ${APP_VERSION}`}
-			              </p>
+			              </p>}
 		            </div>
 		          </div>
 		          <div className="flex items-center gap-6">
 		            <nav className="hidden md:flex items-center gap-6 text-sm text-slate-600">
 		              <Link
-		                href={lang === 'zh' ? '/zh' : '/'}
+		                href={lang === 'zh' ? '/zh' : '/en'}
 		                className="hover:text-slate-900 transition-colors"
 		              >
 		                {lang === 'zh' ? '标书扫描器' : 'Bid Scanner'}
@@ -352,7 +352,7 @@ export function HomePage({ lang }: { lang: Language }) {
 		                  {t.langSwitchZh}
 		                </Link>
 		                <Link
-				                  href="/?lang=en"
+				                  href="/en"
 		                  className={`px-3 py-1 rounded-full text-sm border transition-colors ${
 		                    lang === 'en'
 		                      ? 'bg-blue-600 text-white border-blue-500 shadow-sm'

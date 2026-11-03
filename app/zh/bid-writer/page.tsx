@@ -1,12 +1,4 @@
-import BidWriterPage from "@/components/BidWriterPage";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  alternates: { canonical: "/zh/bid-writer" },
-  openGraph: { url: "/zh/bid-writer" },
-};
-
-export default function ZhBidWriterPage() {
-  return <BidWriterPage lang="zh" />;
-}
-
+import BidWriterPage from '@/components/BidWriterPage';
+import { toolMetadata } from '@/lib/seo';
+export const metadata = toolMetadata.writer.zh;
+export default function ZhBidWriterPage() { return <BidWriterPage lang="zh" />; }

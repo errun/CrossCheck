@@ -1,11 +1,4 @@
-'use client';
-
 import { HomePage } from '@/components/HomePage';
-import { Language } from '@/types';
-
-// Chinese landing page at "/zh" – only renders Chinese content
-export default function ZhHomePage() {
-	const lang: Language = 'zh';
-	return <HomePage lang={lang} />;
-}
-
+import { toolMetadata } from '@/lib/seo';
+export const metadata = toolMetadata.scanner.zh;
+export default function ZhHomePage() { return <HomePage lang="zh" />; }

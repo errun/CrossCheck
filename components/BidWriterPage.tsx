@@ -788,7 +788,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 		        {/* 顶部导航：返回首页（暂不显示登录 / 积分区） */}
 		        <div className="flex items-center justify-between max-w-5xl mx-auto mb-4 gap-4">
 		          <Link
-		            href={lang === "zh" ? "/zh" : "/"}
+		            href={lang === "zh" ? "/zh" : "/en"}
 		            className="flex items-center text-sm text-slate-600 hover:text-blue-600"
 		          >
 		            <span className="mr-1 text-base">←</span>
