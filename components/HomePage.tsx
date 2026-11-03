@@ -73,7 +73,7 @@ const translations: Record<Language, {
 			    bidWriterLinkDesc: '根据招标文件一键生成标准化投标文件草稿，并支持导出 Word 模板。',
 			    // 首页第一个功能卡片：投标文件检查
 			    uploadCardTitle: '投标文件检查',
-	    uploadCardDesc: '支持 PDF / Word(.docx)，最大4MB、50页、6万字符',
+	    uploadCardDesc: '支持 PDF / Word(.docx)，最大4MB、PDF最多50页、6万字符',
     uploadPlaceholder: '点击选择 PDF / Word 文件',
     analyzeButton: '标书分析',
     analyzingTitle: '正在分析中...',
@@ -95,7 +95,7 @@ const translations: Record<Language, {
     sectionP2Desc: '可能导致扣分或不利评审',
     sectionP3Title: '✅ 格式问题（P3）',
     sectionP3Desc: '建议优化项',
-    pageLabel: (pageNo) => `第 ${pageNo} 页`,
+    pageLabel: (pageNo) => pageNo > 0 ? `第 ${pageNo} 页` : '原文段落',
     errorContentLabel: '错误内容：',
     correctTextLabel: '✓ 正确写法：',
     suggestionPrefix: '💡 ',
@@ -108,10 +108,10 @@ const translations: Record<Language, {
 	    faqTitle: '常见问题：标书合规性与废标风险',
 	    faqQ1: '标书检查器是如何工作的？',
 	    faqA1:
-	      '您上传标书和/或 RFP 后，系统会用 AI 对全文进行逐页分析，检查文件内的价格、编号、期限和身份信息一致性，并提示明确缺失的授权材料。',
+	      '上传一份投标文件，系统检查其内部价格、项目编号、期限和投标人信息的一致性，并提示明确缺失的授权材料。此入口不将投标文件与另一份招标文件逐条对照。',
 	    faqQ2: '它可以帮我避免废标吗？',
 	    faqA2:
-	      '没有任何工具能 100% 保证中标，但通过在提交前自动发现 P1 致命风险和重要合规缺口，它可以大幅降低因低级错误或漏项而导致的废标可能性。',
+	      '检查提示可帮助定位需要核实的不一致信息，但不能确认投标资格、附件齐全或保证中标。请对照招标原文，由责任人完成最终审核。',
   },
 		  en: {
 		    appName: 'RFPAI',
@@ -122,7 +122,7 @@ const translations: Record<Language, {
 		    bidWriterLinkLabel: 'AI Bid Draft Generator',
 		    bidWriterLinkDesc: 'Build a draft from the RFP, complete missing details and export to Word.',
 		    uploadCardTitle: 'Upload Bid Document',
-	    uploadCardDesc: 'Supports PDF / Word (.docx), up to 4MB',
+	    uploadCardDesc: 'PDF / Word (.docx): max 4MB, 50 PDF pages, 60,000 characters',
     uploadPlaceholder: 'Click to choose a PDF / Word file',
     analyzeButton: 'Analyze Bid Document',
     analyzingTitle: 'Analyzing...',
@@ -131,7 +131,7 @@ const translations: Record<Language, {
     ruleStatusRunning: 'Running',
 	    rulePriceConsistency: 'Pricing Consistency Check',
 	    ruleTypos: 'Identifiers and terms',
-	    ruleIdentity: 'Instant RFP Cross-Reference',
+	    ruleIdentity: 'Bidder Identity Consistency',
     totalPagesLabel: 'Total pages',
     p1Label: 'Critical issues',
     p2Label: 'Major issues',
@@ -144,7 +144,7 @@ const translations: Record<Language, {
     sectionP2Desc: 'Issues that may cause score deduction or disadvantages',
     sectionP3Title: '✅ Formatting issues (P3)',
     sectionP3Desc: 'Recommended improvements',
-    pageLabel: (pageNo) => `Page ${pageNo}`,
+    pageLabel: (pageNo) => pageNo > 0 ? `Page ${pageNo}` : 'Source paragraph',
     errorContentLabel: 'Error snippet:',
     correctTextLabel: '✓ Correct text:',
     suggestionPrefix: '💡 ',
@@ -157,10 +157,10 @@ const translations: Record<Language, {
 	    faqTitle: 'FAQ: Bid checker & AI proposal compliance',
 	    faqQ1: 'How does the bid checker work?',
 	    faqA1:
-	      'Upload your bid proposal and RFP, and our AI proposal analysis engine cross-references them to detect pricing inconsistencies, missing mandatory requirements, formatting problems, and identity issues before you submit.',
+	      'Upload one bid document to check internally conflicting prices, project IDs, bidder names and deadlines, plus explicitly missing authorization. This checker does not compare your bid against a separate RFP or verify every mandatory requirement.',
 	    faqQ2: 'Can it prevent disqualification?',
 	    faqA2:
-	      'No tool can guarantee an award, but by automatically flagging P1-level compliance gaps and common bid errors before submission, the checker can significantly reduce the risk of disqualification.',
+	      'Alerts identify inconsistencies for review. They do not establish eligibility, verify every attachment or guarantee an award. Check the RFP and have a responsible reviewer approve the final submission.',
   },
 };
 

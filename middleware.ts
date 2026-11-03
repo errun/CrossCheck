@@ -36,7 +36,7 @@ export function middleware(req: NextRequest) {
 	const requestHeaders = new Headers(req.headers);
 	requestHeaders.set("x-app-lang", "en");
 	const res = NextResponse.next({ request: { headers: requestHeaders } });
-	if (langParam === "en" && langCookie !== "en") {
+	if ((pathname === "/en" || langParam === "en") && langCookie !== "en") {
 		res.cookies.set("lang", "en", { path: "/", maxAge: 60 * 60 * 24 * 365 });
 	}
 	return res;
