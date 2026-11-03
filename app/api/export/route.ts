@@ -6,9 +6,10 @@ import { logger } from '@/lib/logger';
 // The browser sends the reviewed result; export works across serverless instances.
 export async function POST(request: NextRequest) {
   try {
-    const { errors } = await request.json();
+    const { errors, lang: requestedLang } = await request.json();
+    const lang = requestedLang === 'en' ? 'en' : 'zh';
     if (!Array.isArray(errors) || errors.length > 1000 || errors.some((e: any) => !e || !['P1', 'P2', 'P3'].includes(e.priority) || typeof e.snippet !== 'string' || typeof e.suggestion !== 'string' || typeof e.title !== 'string' || typeof e.rule_id !== 'string' || !Number.isFinite(e.confidence) || !Number.isInteger(e.page_no))) return NextResponse.json({ error: 'Invalid checklist' }, { status: 400 });
-    return new NextResponse(generateCSV(errors), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="bid-checklist.csv"', 'Cache-Control': 'no-store' } });
+    return new NextResponse(generateCSV(errors, lang), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="bid-checklist.csv"', 'Cache-Control': 'no-store' } });
   } catch { return NextResponse.json({ error: 'Invalid checklist' }, { status: 400 }); }
 }
 
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
   }
   
   if (format === 'csv') {
-    const csv = generateCSV(result.errors);
+    const csv = generateCSV(result.errors, searchParams.get('lang') === 'en' ? 'en' : 'zh');
     
     logger.info('export: csv generated', {
       docId,
@@ -67,51 +68,19 @@ export async function GET(request: NextRequest) {
 /**
  * 生成 CSV 格式的检查清单
  */
-function generateCSV(errors: ErrorItem[]): string {
-  // 添加 BOM 以支持中文
-  const BOM = '\ufeff';
-  
-  // 按优先级分组
-  const p1Errors = errors.filter(e => e.priority === 'P1');
-  const p2Errors = errors.filter(e => e.priority === 'P2');
-  const p3Errors = errors.filter(e => e.priority === 'P3');
-  
-  let csv = BOM;
-  
-  // 致命问题 (P1)
-  csv += '一、🚨 致命问题（P1 - 直接导致废标的风险）\n';
-  csv += '序号,检查项ID,问题描述,风险类型,修正建议,证据页码,置信度\n';
-  p1Errors.forEach((err, index) => {
-    csv += csvRow(err, index);
-  });
-  
-  csv += '\n';
-  
-  // 重大问题 (P2)
-  csv += '二、📉 重大问题（P2 - 可能导致扣分或不利评审）\n';
-  csv += '序号,检查项ID,问题描述,风险类型,影响后果,证据页码,置信度\n';
-  p2Errors.forEach((err, index) => {
-    csv += csvRow(err, index);
-  });
-  
-  csv += '\n';
-  
-  // 格式问题 (P3)
-  csv += '三、✅ 格式与完整性提醒（P3 - 建议优化项）\n';
-  csv += '序号,检查项ID,问题描述,风险类型,修正建议,证据页码,置信度\n';
-  p3Errors.forEach((err, index) => {
-    csv += csvRow(err, index);
-  });
-  
-  return csv;
+function generateCSV(errors: ErrorItem[], lang: 'zh' | 'en' = 'zh'): string {
+  const labels = lang === 'en'
+    ? ['Critical findings (P1 - review required)', 'Major findings (P2 - review required)', 'Format and completeness notes (P3)']
+    : ['一、🚨 致命问题（P1 - 直接导致废标的风险）', '二、📉 重大问题（P2 - 可能导致扣分或不利评审）', '三、✅ 格式与完整性提醒（P3 - 建议优化项）'];
+  const header = lang === 'en' ? 'Number,Rule ID,Evidence,Risk,Suggestion,Source,Confidence' : '序号,检查项ID,问题描述,风险类型,修正建议,证据页码,置信度';
+  return '\ufeff' + (['P1', 'P2', 'P3'] as const).map((priority, i) =>
+    labels[i] + '\n' + header + '\n' + errors.filter(e => e.priority === priority).map((err, index) => csvRow(err, index, lang)).join('')
+  ).join('\n');
 }
 
-/**
- * 转义 CSV 字段中的特殊字符
- */
-function csvRow(err: ErrorItem, index: number): string {
+function csvRow(err: ErrorItem, index: number, lang: 'zh' | 'en'): string {
   return [String(index + 1), err.rule_id, err.snippet, err.title, err.suggestion,
-    err.page_no > 0 ? `第${err.page_no}页` : '原文段落', `${(err.confidence * 100).toFixed(0)}%`]
+    lang === 'en' ? (err.page_no > 0 ? `Page ${err.page_no}` : 'Source paragraph') : (err.page_no > 0 ? `第${err.page_no}页` : '原文段落'), `${(err.confidence * 100).toFixed(0)}%`]
     .map(value => `"${escapeCSV(value)}"`).join(',') + '\n';
 }
 

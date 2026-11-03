@@ -298,7 +298,7 @@ export function HomePage({ lang }: { lang: Language }) {
     if (!result) return;
     
     try {
-      const response = await fetch('/api/export', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ errors: result.errors }) });
+      const response = await fetch('/api/export', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ errors: result.errors, lang }) });
       if (!response.ok) throw new Error('export failed');
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement('a'); link.href = url; link.download = 'bid-checklist.csv'; link.click(); URL.revokeObjectURL(url);
