@@ -1,6 +1,7 @@
-// @ts-nocheck
 'use client';
 
+import { FreeMaterialConsent } from "@/components/FreeMaterialConsent";
+import { toolEvent } from "@/lib/tool-events";
 import { useState } from 'react';
 import Link from 'next/link';
 import { Upload, FileText, AlertCircle, CheckCircle2, Loader2, Download, ArrowRight, Flame } from 'lucide-react';
@@ -71,7 +72,7 @@ const translations: Record<Language, {
 			    bidWriterLinkDesc: '根据招标文件一键生成标准化投标文件草稿，并支持导出 Word 模板。',
 			    // 首页第一个功能卡片：投标文件检查
 			    uploadCardTitle: '投标文件检查',
-	    uploadCardDesc: '支持 PDF / Word(.docx) 格式，最大 100MB',
+	    uploadCardDesc: '支持 PDF / Word(.docx)，最大4MB、50页、6万字符',
     uploadPlaceholder: '点击选择 PDF / Word 文件',
     analyzeButton: '标书分析',
     analyzingTitle: '正在分析中...',
@@ -79,7 +80,7 @@ const translations: Record<Language, {
     scanningText: (current, total) => `正在扫描第 ${current} / ${total} 页`,
     ruleStatusRunning: '进行中',
     rulePriceConsistency: '价格一致性',
-    ruleTypos: '错别字检查',
+    ruleTypos: '编号与期限核对',
     ruleIdentity: '身份信息',
     totalPagesLabel: '总页数',
     p1Label: '致命问题',
@@ -106,7 +107,7 @@ const translations: Record<Language, {
 	    faqTitle: '常见问题：标书合规性与废标风险',
 	    faqQ1: '标书检查器是如何工作的？',
 	    faqA1:
-	      '您上传标书和/或 RFP 后，系统会用 AI 对全文进行逐页分析，对照招标文件中的关键条款，检查价格一致性、必输项缺失、错别字和身份信息等问题。',
+	      '您上传标书和/或 RFP 后，系统会用 AI 对全文进行逐页分析，检查文件内的价格、编号、期限和身份信息一致性，并提示明确缺失的授权材料。',
 	    faqQ2: '它可以帮我避免废标吗？',
 	    faqA2:
 	      '没有任何工具能 100% 保证中标，但通过在提交前自动发现 P1 致命风险和重要合规缺口，它可以大幅降低因低级错误或漏项而导致的废标可能性。',
@@ -120,7 +121,7 @@ const translations: Record<Language, {
 		    bidWriterLinkLabel: 'AI Bid Draft Generator',
 		    bidWriterLinkDesc: 'Let AI draft a full proposal document from the RFP and export it to Word.',
 		    uploadCardTitle: 'Upload Bid Document',
-	    uploadCardDesc: 'Supports PDF / Word (.docx), up to 100MB',
+	    uploadCardDesc: 'Supports PDF / Word (.docx), up to 4MB',
     uploadPlaceholder: 'Click to choose a PDF / Word file',
     analyzeButton: 'Analyze Bid Document',
     analyzingTitle: 'Analyzing...',
@@ -128,7 +129,7 @@ const translations: Record<Language, {
     scanningText: (current, total) => `Scanning page ${current} / ${total}`,
     ruleStatusRunning: 'Running',
 	    rulePriceConsistency: 'Pricing Consistency Check',
-	    ruleTypos: 'Typos & formatting',
+	    ruleTypos: 'Identifiers and terms',
 	    ruleIdentity: 'Instant RFP Cross-Reference',
     totalPagesLabel: 'Total pages',
     p1Label: 'Critical issues',
@@ -197,11 +198,12 @@ function extractCorrectText(suggestion: string): string {
 	}
 
 export function HomePage({ lang }: { lang: Language }) {
-	  const [file, setFile] = useState<File | null>(null);
+	  const [freeConsent, setFreeConsent] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
 	  const [analyzing, setAnalyzing] = useState(false);
 		  const [result, setResult] = useState<any>(null);
 		  const [error, setError] = useState<string>('');
-		  const [currentPage, setCurrentPage] = useState(1);
+
 				  const [totalPages, setTotalPages] = useState(0);
 			
 				  const t = translations[lang];
@@ -224,38 +226,27 @@ export function HomePage({ lang }: { lang: Language }) {
 	    }
 
 	    setFile(selectedFile);
+    setFreeConsent(false);
 	    setError('');
 	    setResult(null);
 			  };
 
-					  const handleAnalyze = async (modelType: 'default' = 'default') => {
+				  const handleAnalyze = async (modelType: 'default' = 'default') => {
 	    	    if (!file) return;
 	   		
 	   		    // Authentication is not required for analysis in the current low-volume phase.
-	   		    setAnalyzing(true);
+             toolEvent('scanner', 'start');
+    setAnalyzing(true);
     setError('');
-    setCurrentPage(1);
+
 
 	    try {
       const formData = new FormData();
+      formData.append("free_consent", String(freeConsent));
       formData.append('file', file);
       formData.append('model', modelType);
 	      // 将当前界面语言一并传给后端，便于选择中英文提示词和返回结果语言
 	      formData.append('lang', lang);
-
-      // 模拟逐页扫描动画
-      const estimatedPages = 50;
-      setTotalPages(estimatedPages);
-
-      const interval = setInterval(() => {
-        setCurrentPage(prev => {
-          if (prev >= estimatedPages) {
-            clearInterval(interval);
-            return estimatedPages;
-          }
-          return prev + 1;
-        });
-      }, 100);
 
 		      // 调用 API
 		      const res = await fetch('/api/analyze', {
@@ -263,7 +254,7 @@ export function HomePage({ lang }: { lang: Language }) {
 		        body: formData
 		      });
 			
-		      clearInterval(interval);
+
 			
 			      if (!res.ok) {
 			        let message = t.defaultErrorMessage;
@@ -272,8 +263,8 @@ export function HomePage({ lang }: { lang: Language }) {
 			        if (res.status === 413) {
 			          message =
 			            lang === 'zh'
-			              ? '文件太大，超过当前在线版本的上传大小上限。建议控制在 100MB 以内，或拆分为多个文件后再上传。'
-			              : 'File is too large for the current online version. Please keep it under 100MB or split it into multiple documents.';
+			              ? '文件太大，超过当前在线版本的上传大小上限。建议控制在 4MB 以内，或拆分为多个文件后再上传。'
+			              : 'File is too large for the current online version. Please keep it under 4MB or split it into multiple documents.';
 			        } else {
 			          try {
 			            const errorData = await res.json();
@@ -289,22 +280,28 @@ export function HomePage({ lang }: { lang: Language }) {
 	
 	      const data = await res.json();
       setTotalPages(data.total_pages);
-      setCurrentPage(data.total_pages);
+
       setResult(data);
+      toolEvent('scanner', 'success');
 
 	      } catch (err: any) {
-	      setError(err.message || t.defaultErrorMessage);
+	      toolEvent('scanner', 'failure');
+      setError(err.message || t.defaultErrorMessage);
       console.error('Analysis error:', err);
     } finally {
       setAnalyzing(false);
     }
 	  };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!result) return;
     
-    const url = `/api/export?doc_id=${result.doc_id}&format=csv`;
-    window.open(url, '_blank');
+    try {
+      const response = await fetch('/api/export', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ errors: result.errors }) });
+      if (!response.ok) throw new Error('export failed');
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a'); link.href = url; link.download = 'bid-checklist.csv'; link.click(); URL.revokeObjectURL(url);
+    } catch { setError(lang === 'zh' ? '检查清单导出失败，请稍后重试。' : 'The checklist could not be exported. Try again.'); }
   };
 
 		  return (
@@ -417,7 +414,7 @@ export function HomePage({ lang }: { lang: Language }) {
 			                    </label>
 			                  </div>
 			                  <p className="text-xs text-slate-500 text-center">
-			                    Security First: GDPR Compliant &amp; Data Encryption.
+			                    {lang === 'zh' ? '仅上传你有权处理的材料；结果需人工核实。' : 'Upload only documents you are authorized to process. Review all results.'}
 			                  </p>
 			                  
 			          {error && (
@@ -451,9 +448,10 @@ export function HomePage({ lang }: { lang: Language }) {
 			
 			                  {/* 仅保留单一模型按钮（Gemini 2.5 Flash） */}
 			                  <div className="space-y-3">
-			                    <Button
+			                    <FreeMaterialConsent lang={lang} checked={freeConsent} onChange={setFreeConsent} />
+                  <Button
 			                      onClick={() => handleAnalyze('default')}
-			                      disabled={!file}
+			                      disabled={!file || !freeConsent}
 			                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
 			                      size="lg"
 			                    >
@@ -578,19 +576,13 @@ export function HomePage({ lang }: { lang: Language }) {
                   <div className="text-center">
                     <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
 	                    <p className="text-lg font-semibold">
-	                      {t.scanningText(currentPage, totalPages)}
+	                      {lang === 'zh' ? '正在解析文件并核对内容，请稍候…' : 'Reading and checking the document…'}
 	                    </p>
 		                    <p className="sr-only">
 		                      AI proposal analysis progress indicator while the bid checker scans your document.
 		                    </p>
-	            <div className="w-full bg-slate-200 rounded-full h-2 mt-4">
-                      <div 
-	                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${(currentPage / totalPages) * 100}%` }}
-                      />
-                    </div>
                   </div>
-                  
+
                   {/* 规则卡片 */}
 	                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 	                    <RuleCard ruleId="R0001" title={t.rulePriceConsistency} statusLabel={t.ruleStatusRunning} />
@@ -668,7 +660,7 @@ export function HomePage({ lang }: { lang: Language }) {
                   setResult(null);
                   setError('');
                   setAnalyzing(false);
-                  setCurrentPage(1);
+
                   setTotalPages(0);
 	                }}
 	                size="lg"
@@ -810,7 +802,7 @@ function ErrorSection({
                   <span className="font-semibold">{error.title}</span>
                 </div>
                 <Badge variant="secondary">
-	                  {t.pageLabel(error.page_no)}
+	                  {error.page_no > 0 ? t.pageLabel(error.page_no) : (lang === 'zh' ? '原文段落' : 'Source paragraph')}
                 </Badge>
               </div>
 

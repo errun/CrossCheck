@@ -3,6 +3,15 @@ import { cacheManager } from '@/lib/cache';
 import { ErrorItem } from '@/types';
 import { logger } from '@/lib/logger';
 
+// The browser sends the reviewed result; export works across serverless instances.
+export async function POST(request: NextRequest) {
+  try {
+    const { errors } = await request.json();
+    if (!Array.isArray(errors) || errors.length > 1000 || errors.some((e: any) => !e || !['P1', 'P2', 'P3'].includes(e.priority) || typeof e.snippet !== 'string' || typeof e.suggestion !== 'string' || typeof e.title !== 'string' || typeof e.rule_id !== 'string' || !Number.isFinite(e.confidence) || !Number.isInteger(e.page_no))) return NextResponse.json({ error: 'Invalid checklist' }, { status: 400 });
+    return new NextResponse(generateCSV(errors), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="bid-checklist.csv"', 'Cache-Control': 'no-store' } });
+  } catch { return NextResponse.json({ error: 'Invalid checklist' }, { status: 400 }); }
+}
+
 /**
  * GET /api/export?doc_id=xxx&format=csv
  * 导出检查清单
@@ -73,7 +82,7 @@ function generateCSV(errors: ErrorItem[]): string {
   csv += '一、🚨 致命问题（P1 - 直接导致废标的风险）\n';
   csv += '序号,检查项ID,问题描述,风险类型,修正建议,证据页码,置信度\n';
   p1Errors.forEach((err, index) => {
-    csv += `${index + 1},${err.rule_id},"${escapeCSV(err.snippet)}",${err.title},"${escapeCSV(err.suggestion)}",第${err.page_no}页,${(err.confidence * 100).toFixed(0)}%\n`;
+    csv += csvRow(err, index);
   });
   
   csv += '\n';
@@ -82,7 +91,7 @@ function generateCSV(errors: ErrorItem[]): string {
   csv += '二、📉 重大问题（P2 - 可能导致扣分或不利评审）\n';
   csv += '序号,检查项ID,问题描述,风险类型,影响后果,证据页码,置信度\n';
   p2Errors.forEach((err, index) => {
-    csv += `${index + 1},${err.rule_id},"${escapeCSV(err.snippet)}",${err.title},"${escapeCSV(err.suggestion)}",第${err.page_no}页,${(err.confidence * 100).toFixed(0)}%\n`;
+    csv += csvRow(err, index);
   });
   
   csv += '\n';
@@ -91,7 +100,7 @@ function generateCSV(errors: ErrorItem[]): string {
   csv += '三、✅ 格式与完整性提醒（P3 - 建议优化项）\n';
   csv += '序号,检查项ID,问题描述,风险类型,修正建议,证据页码,置信度\n';
   p3Errors.forEach((err, index) => {
-    csv += `${index + 1},${err.rule_id},"${escapeCSV(err.snippet)}",${err.title},"${escapeCSV(err.suggestion)}",第${err.page_no}页,${(err.confidence * 100).toFixed(0)}%\n`;
+    csv += csvRow(err, index);
   });
   
   return csv;
@@ -100,6 +109,13 @@ function generateCSV(errors: ErrorItem[]): string {
 /**
  * 转义 CSV 字段中的特殊字符
  */
+function csvRow(err: ErrorItem, index: number): string {
+  return [String(index + 1), err.rule_id, err.snippet, err.title, err.suggestion,
+    err.page_no > 0 ? `第${err.page_no}页` : '原文段落', `${(err.confidence * 100).toFixed(0)}%`]
+    .map(value => `"${escapeCSV(value)}"`).join(',') + '\n';
+}
+
 function escapeCSV(text: string): string {
-  return text.replace(/"/g, '""');
+  const safe = /^[\s]*[=+@-]/.test(text) || /^[\t\r\n]/.test(text) ? `'${text}` : text;
+  return safe.replace(/"/g, '""');
 }

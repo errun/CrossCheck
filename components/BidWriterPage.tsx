@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { FreeMaterialConsent } from "@/components/FreeMaterialConsent";
+import { toolEvent } from "@/lib/tool-events";
+import { useState } from "react";
 import type React from "react";
 import Link from "next/link";
 import { Upload, FileText, Loader2, ClipboardCopy, Download } from "lucide-react";
@@ -21,41 +23,7 @@ function escapeHtml(text: string): string {
 
 // 与后端 Word 导出保持一致的占位符/标记清理逻辑（简化版，输出为纯文本）
 function normalizePlaceholders(text: string): string {
-  const trimmed = text.trim();
-
-  if (
-    trimmed === "[待填]" ||
-    trimmed === "【待填】" ||
-    trimmed === "待填" ||
-    trimmed === "[需用户填写]" ||
-    trimmed === "【需用户填写】" ||
-    trimmed === "需用户填写" ||
-    trimmed === "(需用户填写)" ||
-    trimmed === "（需用户填写）" ||
-    trimmed === "[填]" ||
-    trimmed === "【填】" ||
-    trimmed === "(填)" ||
-    trimmed === "（填）"
-  ) {
-    return "";
-  }
-
   let result = text;
-
-  // 去掉常见占位符本身
-  result = result
-    .replace(/\[待填\]/g, "")
-    .replace(/【待填】/g, "")
-    .replace(/待填/g, "")
-    .replace(/\[需用户填写\]/g, "")
-    .replace(/【需用户填写】/g, "")
-    .replace(/需用户填写/g, "")
-    .replace(/\(需用户填写\)/g, "")
-    .replace(/（需用户填写）/g, "")
-    .replace(/\[填\]/g, "")
-    .replace(/【填】/g, "")
-    .replace(/\(填\)/g, "")
-    .replace(/（填）/g, "");
 
   // 去掉 Markdown 粗体/斜体星号
   result = result.replace(/\*\*(.*?)\*\*/g, "$1");
@@ -629,14 +597,15 @@ ${bodyParts.join("\n")}
 }
 
 export default function BidWriterPage({ lang }: { lang: Language }) {
+  const [freeConsent, setFreeConsent] = useState(false);
   const [rfpFile, setRfpFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
 		  const [draft, setDraft] = useState<string>("");
 		  const [copied, setCopied] = useState(false);
 		  const [exporting, setExporting] = useState(false);
-		  const [progressStep, setProgressStep] = useState<0 | 1 | 2 | 3>(0);
-		  const progressTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -647,7 +616,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
       setRfpFile(null);
       setDraft("");
       setError(
-        "当前在线版本暂不支持直接解析 .doc，请先在本地另存为 .docx 或导出为 PDF 后再上传。This online version does not currently support parsing .doc files directly. Please save the file as .docx or export it to PDF locally before uploading.",
+        "当前在线版本暂不支持直接解析 .doc，请先在本地另存为 .docx 或打印 / 另存为 PDF 后再上传。This online version does not currently support parsing .doc files directly. Please save the file as .docx or export it to PDF locally before uploading.",
       );
       try {
         (e.target as HTMLInputElement).value = "";
@@ -656,6 +625,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
     }
 
     setRfpFile(selected);
+    setFreeConsent(false);
     setError("");
     setDraft("");
   };
@@ -663,32 +633,20 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 	  const handleGenerate = async () => {
 	    if (!rfpFile) return;
 
-	    let success = false;
 
 	    // Authentication is not required for bid draft generation in the current low-volume phase.
-	    setLoading(true);
+	    toolEvent('writer', 'start');
+    setLoading(true);
 	    setError("");
 	    setDraft("");
 	    setCopied(false);
 
-	    // 重置并启动前端可视的三步进度（纯前端模拟，帮助用户理解大致流程）
-	    progressTimersRef.current.forEach((id) => clearTimeout(id));
-	    progressTimersRef.current = [];
-	    setProgressStep(1);
-
-	    const t1 = setTimeout(() => {
-	      setProgressStep((prev) => (prev < 2 ? 2 : prev));
-	    }, 4000);
-	    const t2 = setTimeout(() => {
-	      setProgressStep((prev) => (prev < 3 ? 3 : prev));
-	    }, 12000);
-	    progressTimersRef.current = [t1, t2];
-
 	    try {
 	      const formData = new FormData();
+      formData.append("free_consent", String(freeConsent));
 	      formData.append("rfp_file", rfpFile);
-	      // Bid Writer 默认改为使用 Gemini 3 Pro（相对 2.5 Flash 质量更高）
-	      formData.append("model", "gemini3");
+	      // 模型由服务端免费策略选择
+
 	      formData.append("lang", lang);
 	
 	      const res = await fetch("/api/generate-bid", { method: "POST", body: formData });
@@ -702,8 +660,8 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
         if (res.status === 413) {
           message =
             lang === "zh"
-              ? "文件太大，超过当前在线版本的上传大小上限。建议控制在 100MB 以内，或拆分为多个文件后再上传。"
-              : "File is too large for the current online version. Please keep each file under 100MB or split it into multiple documents.";
+              ? "文件太大，超过当前在线版本的上传大小上限。建议控制在 4MB 以内，或拆分为多个文件后再上传。"
+              : "File is too large for the current online version. Please keep each file under 4MB or split it into multiple documents.";
         } else {
           message =
             data?.error || (lang === "zh" ? "生成投标文件失败，请稍后重试" : "Failed to generate bid draft, please try again later");
@@ -713,16 +671,17 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 	      }
 	
 	      const data = await res.json();
-	      setDraft((data?.draft as string) || "");
-	      success = true;
+	      if (typeof data?.draft !== "string" || !data.draft.trim()) throw new Error(lang === "zh" ? "未生成完整草稿，请重试。" : "No complete draft was produced.");
+      setDraft(data.draft);
+      toolEvent('writer', 'success');
     } catch (err: any) {
-	      console.error("Bid writer error:", err);
+	      toolEvent('writer', 'failure');
 	      setError(err?.message || (lang === "zh" ? "生成投标文件失败，请稍后重试" : "Failed to generate bid draft, please try again later"));
 	    } finally {
 	      setLoading(false);
-	      progressTimersRef.current.forEach((id) => clearTimeout(id));
-	      progressTimersRef.current = [];
-	      setProgressStep(success ? 3 : 0);
+
+
+
 	    }
 	  };
 
@@ -847,7 +806,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
           </h1>
           <p className="text-slate-600 text-base max-w-2xl mx-auto">
             {lang === "zh"
-              ? "上传一份招标文件，AI 会帮你草拟一份完整的中文投标文件正文，你可以再在 Word 里继续修改、排版。"
+              ? "上传招标文件，提取要求并生成待完善的投标草稿。企业资料、报价及响应证据需自行核实补齐。"
               : "Upload your RFP and the AI will draft a complete English proposal that you can further refine and format in Word."}
           </p>
         </header>
@@ -880,8 +839,8 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
                 </div>
                 <div className="text-[11px] text-slate-500">
                   {lang === "zh"
-                    ? "支持 PDF / Word (.docx)，建议控制在 100MB 以内"
-                    : "PDF / Word (.docx), recommended size ≤ 100MB"}
+                    ? "支持 PDF / Word (.docx)，最大4MB、PDF最多50页、6万字符"
+                    : "PDF / Word (.docx): max 4MB, 50 PDF pages, 60,000 characters"}
                 </div>
                 <input
                   type="file"
@@ -891,68 +850,13 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
                 />
               </label>
 	              <div className="flex flex-col items-end gap-2">
-	                <Button onClick={handleGenerate} disabled={!rfpFile || loading} size="sm">
+	                <FreeMaterialConsent lang={lang} checked={freeConsent} onChange={setFreeConsent} />
+                  <Button onClick={handleGenerate} disabled={!rfpFile || loading || !freeConsent} size="sm">
 	                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
 	                  {lang === "zh" ? "生成投标文件草稿" : "Generate bid draft"}
 	                </Button>
-	                {(loading || progressStep === 3) && (
-	                  <div className="text-[11px] text-slate-500 text-right space-y-0.5">
-	                    <p>
-	                      {lang === "zh"
-	                        ? "步骤 1/3：上传并校验招标文件（大小、格式）。"
-	                        : "Step 1/3: Uploading and validating the RFP (size & format)."}
-	                      <span className="ml-1">
-	                        {progressStep >= 1
-	                          ? lang === "zh"
-	                            ? progressStep === 1 && loading
-	                              ? "[进行中]"
-	                              : "[已完成]"
-	                            : progressStep === 1 && loading
-	                              ? "[In progress]"
-	                              : "[Done]"
-	                          : lang === "zh"
-	                            ? "[待开始]"
-	                            : "[Pending]"}
-	                      </span>
-	                    </p>
-	                    <p>
-	                      {lang === "zh"
-	                        ? "步骤 2/3：在服务器解析 PDF / Word 文本。"
-	                        : "Step 2/3: Parsing PDF / Word content on the server."}
-	                      <span className="ml-1">
-	                        {progressStep >= 2
-	                          ? lang === "zh"
-	                            ? progressStep === 2 && loading
-	                              ? "[进行中]"
-	                              : "[已完成]"
-	                            : progressStep === 2 && loading
-	                              ? "[In progress]"
-	                              : "[Done]"
-	                          : lang === "zh"
-	                            ? "[待开始]"
-	                            : "[Pending]"}
-	                      </span>
-	                    </p>
-	                    <p>
-	                      {lang === "zh"
-	                        ? "步骤 3/3：调用大模型生成完整投标文件草稿，这一步可能需要 30-90 秒，请耐心等待。"
-	                        : "Step 3/3: Asking the AI model to draft the full proposal. This may take 30–90 seconds, please wait."}
-	                      <span className="ml-1">
-	                        {progressStep >= 3
-	                          ? lang === "zh"
-	                            ? loading
-	                              ? "[进行中]"
-	                              : "[已完成]"
-	                            : loading
-	                              ? "[In progress]"
-	                              : "[Done]"
-	                          : lang === "zh"
-	                            ? "[待开始]"
-	                            : "[Pending]"}
-	                      </span>
-	                    </p>
-	                  </div>
-	                )}
+                  {loading && <p role="status" className="text-sm text-slate-500">{lang === "zh" ? "正在提取要求并生成待核实草稿，请稍候…" : "Extracting requirements and preparing a draft for review…"}</p>}
+
 	              </div>
               {error && (
 	                <div className="mt-2 text-sm text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">
@@ -992,7 +896,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 	                  className="inline-flex items-center gap-1"
 	                >
 	                  <Download className="w-4 h-4" />
-	                  <span>{lang === "zh" ? "导出为 PDF" : "Export as PDF"}</span>
+	                  <span>{lang === "zh" ? "打印 / 另存为 PDF" : "Print / Save as PDF"}</span>
 	                </Button>
                 <Button
                   variant="outline"

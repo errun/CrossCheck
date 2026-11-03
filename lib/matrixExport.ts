@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import * as XLSX from 'xlsx';
 
 import type { MatrixItem } from '@/types';
@@ -37,24 +35,8 @@ export type EnterpriseViewRow = {
 	'Proposal Reference': string;
 	'Legal / Risk Flag': string;
 	'Comments / Notes': string;
-};
-
-const TEMPLATE_FILES: Record<ExportTemplate, string> = {
-	gov: 'lib/Gov_RFP_Compliance_Matrix_Template.xlsx',
-	enterprise: 'lib/Enterprise_RFP_Response_Matrix_Template.xlsx',
-};
-
-const findFileUpwards = (relativePath: string, maxDepth = 10): string | null => {
-	let dir = process.cwd();
-	for (let i = 0; i <= maxDepth; i++) {
-		const candidate = path.join(dir, relativePath);
-		if (fs.existsSync(candidate)) return candidate;
-
-		const parent = path.dirname(dir);
-		if (parent === dir) break;
-		dir = parent;
-	}
-	return null;
+	'Source Page': number | string;
+	'Compliance Status': string;
 };
 
 const GOV_HEADERS: Array<keyof GovViewRow> = [
@@ -88,6 +70,8 @@ const ENTERPRISE_HEADERS: Array<keyof EnterpriseViewRow> = [
 	'Proposal Reference',
 	'Legal / Risk Flag',
 	'Comments / Notes',
+	'Source Page',
+	'Compliance Status',
 ];
 
 // Column widths (approximate, in "characters") to keep exports readable.
@@ -123,6 +107,8 @@ const ENTERPRISE_COL_WIDTHS: XLSX.ColInfo[] = [
 	{ wch: 20 }, // Proposal Reference
 	{ wch: 18 }, // Legal / Risk Flag
 	{ wch: 30 }, // Comments / Notes
+	{ wch: 12 }, // Source Page
+	{ wch: 18 }, // Compliance Status
 ];
 
 const applySheetViewFormatting = (
@@ -196,49 +182,20 @@ const toEnterpriseViewRow = (item: MatrixItem): EnterpriseViewRow => ({
 	'Proposal Reference': normalizeCell(item.proposalReference),
 	'Legal / Risk Flag': normalizeCell(item.legalRiskFlag),
 	'Comments / Notes': normalizeCell(item.commentsNotes),
+	'Source Page': item.sourcePage ?? '',
+	'Compliance Status': normalizeCell(item.complianceStatus),
 });
-
-const clearSheetBelowHeader = (sheet: XLSX.WorkSheet, headerRowIndex: number) => {
-	const ref = sheet['!ref'];
-	if (!ref) return;
-	const range = XLSX.utils.decode_range(ref);
-	for (let r = headerRowIndex + 1; r <= range.e.r; r++) {
-		for (let c = range.s.c; c <= range.e.c; c++) {
-			const addr = XLSX.utils.encode_cell({ r, c });
-			if (sheet[addr]) {
-				delete sheet[addr];
-			}
-		}
-	}
-	sheet['!ref'] = XLSX.utils.encode_range({
-		s: range.s,
-		e: { r: headerRowIndex, c: range.e.c },
-	});
-};
 
 export const buildMatrixWorkbook = (
 	template: ExportTemplate,
 	items: MatrixItem[],
 ): Buffer => {
-	const templateRelativePath = TEMPLATE_FILES[template];
-	const templatePath =
-		findFileUpwards(templateRelativePath) ?? path.join(process.cwd(), templateRelativePath);
-
-	if (!fs.existsSync(templatePath)) {
-		throw new Error(
-			`Matrix export template not found: ${templateRelativePath} (cwd=${process.cwd()})`,
-		);
-	}
-
-	// Next.js bundlers can sometimes alter how third-party modules resolve Node built-ins.
-	// Reading the template bytes ourselves avoids relying on XLSX.readFile() filesystem access.
-	const templateBytes = fs.readFileSync(templatePath);
-	const workbook = XLSX.read(templateBytes, { type: 'buffer' });
-	const sheetName = workbook.SheetNames[0];
-	const sheet = workbook.Sheets[sheetName];
-
+	// Original templates contain only headers; build the same schema without
+	// depending on filesystem assets omitted from serverless function bundles.
+	const workbook = XLSX.utils.book_new();
+	const sheet = XLSX.utils.aoa_to_sheet([template === 'gov' ? GOV_HEADERS : ENTERPRISE_HEADERS]);
+	XLSX.utils.book_append_sheet(workbook, sheet, 'Compliance Matrix');
 	const headerRowIndex = 0;
-	clearSheetBelowHeader(sheet, headerRowIndex);
 
 	applySheetViewFormatting(sheet, {
 		headersCount: template === 'gov' ? GOV_HEADERS.length : ENTERPRISE_HEADERS.length,
