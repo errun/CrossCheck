@@ -34,6 +34,22 @@ test('grounded USD model facts retain their numeric values',()=>{
  assert.equal(consistencyErrors(text,facts,'en').length,1);
 });
 
+test('grounded model facts are merged per occurrence instead of dropping an entire matched field',()=>{
+ const text='项目编号：ABC-1。项目编号为ABC-2。';
+ const result=consistencyErrors(text,[{field:'project',value:'ABC-1',quote:'项目编号：ABC-1'},{field:'project',value:'ABC-2',quote:'项目编号为ABC-2'}]);
+ assert.equal(result.length,1);assert.equal(result[0].rule_id,'CONSISTENCY_PROJECT');
+ const company='投标人：演示科技有限公司（虚构）';
+ assert.equal(consistencyErrors(company,[{field:'company',value:'演示科技有限公司（虚构）',quote:company}]).length,0);
+ const warranty='质保期限：36个月。质保期限为3年。';
+ assert.equal(consistencyErrors(warranty,[{field:'warranty',value:'3年',quote:'质保期限为3年'}]).length,0);
+});
+
+test('validity duration does not absorb delivery deadlines in the same sentence',()=>{
+ assert.equal(consistencyErrors('投标有效期90日，交付期限30天。').length,0);
+ const result=consistencyErrors('投标有效期：自2026年11月20日起90日。投标有效期为60日，交付期限30天。');
+ assert.equal(result.length,1);assert.equal(result[0].rule_id,'CONSISTENCY_VALIDITY');assert.match(result[0].suggestion,/90 \/ 60/);
+});
+
 test('malformed factual items and covered requirements without evidence fail closed',async()=>{
  const {analyzeWithGemini,compareRfpAndBid}=require('../lib/gemini.ts');
  const text='This is a synthetic procurement document containing sufficiently long public test material. '.repeat(2);

@@ -28,13 +28,11 @@ export function extractFacts(text: string): Fact[] {
     for (const m of sentence.matchAll(/\b(?:incident\s+)?response(?:\s+time)?\s*:\s*(\d+)\s*hours?\b/gi)) add('response', m[1], sentence);
     for (const m of sentence.matchAll(/\bresolution(?:\s+(?:plan|deadline|time))?\s*:\s*(\d+)\s*hours?\b/gi)) add('resolution', m[1], sentence);
     for (const m of sentence.matchAll(/项目编号\s*[:：]\s*([A-Za-z0-9_-]+)/g)) add('project', m[1], sentence);
-    for (const m of sentence.matchAll(/投标人(?:名称)?(?:[（(]全称[）)])?\s*[:：]\s*([^，,。；;（(]+)/g)) add('company', m[1], sentence);
+    for (const m of sentence.matchAll(/投标人(?:名称)?(?:[（(]全称[）)])?\s*[:：]\s*([^，,。；;]+)/g)) add('company', m[1], sentence);
     for (const m of sentence.matchAll(/(?:含税总报价|最终总报价|总报价|分项合计)(?:为|：|:)?(?:人民币)?\s*([\d,]+(?:\.\d+)?)\s*元/g)) add('price', String(Number(m[1].replace(/,/g, ''))), sentence);
     for (const m of sentence.matchAll(/(?:交付期限|交货期|交付时间)\s*[:：为]?[^。；\n]{0,20}?(\d+)\s*(?:个)?(?:日历日|天|日)/g)) add('delivery', m[1], sentence);
     if (/交付|交货/.test(sentence)) for (const m of sentence.matchAll(/合同(?:签订|生效)后(?:第)?(\d+)\s*(?:个)?(?:日历日|天|日)/g)) add('delivery', m[1], sentence);
-    if (/有效期/.test(sentence)) for (const m of sentence.matchAll(/(\d+)\s*(?:个)?(?:日历日|天|日)/g)) {
-      if (sentence[m.index! - 1] !== '月' && !/起/.test(sentence.slice(m.index! + m[0].length, m.index! + m[0].length + 1))) add('validity', m[1], sentence);
-    }
+    for (const m of sentence.matchAll(/有效期\s*(?:为|：|:)?\s*(?:自[^，,；;]{0,45}?起)?\s*(?:不少于|至少)?\s*(\d+)\s*(?:个)?(?:日历日|天|日)/g)) add('validity', m[1], sentence);
     for (const m of sentence.matchAll(/质保(?:期限|期)?(?:为|：|:)?\s*(\d+)\s*(个月|月|年)/g)) add('warranty', String(Number(m[1]) * (m[2] === '年' ? 12 : 1)), sentence);
     for (const m of sentence.matchAll(/(\d+)\s*小时内响应/g)) add('response', m[1], sentence);
     for (const m of sentence.matchAll(/(\d+)\s*小时内(?:给出|提供)[^，,]{0,5}(?:处理|解决)方案/g)) add('resolution', m[1], sentence);
@@ -44,13 +42,15 @@ export function extractFacts(text: string): Fact[] {
 
 export function consistencyErrors(text: string, supplied: Fact[] = [], lang: Language = 'zh'): ErrorItem[] {
   const extracted = extractFacts(text);
-  const grounded = supplied.filter(f => labels[f.field] && !extracted.some(e => e.field === f.field) && typeof f.value === 'string' && typeof f.quote === 'string' && sourcePage(text, f.quote) >= 0 && compact(f.quote).includes(compact(f.value)));
-  const facts = [...extracted, ...grounded.map(f => {
-    if (f.field === 'company' || f.field === 'project') return f;
+  const grounded = supplied.filter(f => labels[f.field] && typeof f.value === 'string' && typeof f.quote === 'string' && sourcePage(text, f.quote) >= 0 && compact(f.quote).includes(compact(f.value)));
+  const candidates = [...extracted, ...grounded].map(f => {
+    if (f.field === 'company') return { ...f, value: f.value.replace(/[（(](?:虚构|fictional)[）)]/gi, '').trim() };
+    if (f.field === 'project') return f;
     const numeric = f.value.match(/^(?:人民币|RMB|CNY|USD|EUR|GBP|¥|\$|€|£)?\s*([\d,.]+)\s*(个月|月|年|months?|years?|小时|hours?|天|日|(?:calendar\s+)?days?|元)?$/i);
     if (!numeric) return { ...f, value: '' };
     return { ...f, value: String(Number(numeric[1].replace(/,/g, '')) * (f.field === 'warranty' && /年|years?/i.test(numeric[2] || '') ? 12 : 1)) };
-  }).filter(f => f.value)];
+  }).filter(f => f.value);
+  const facts = [...new Map(candidates.map(f => [`${f.field}|${normalize(f.value)}|${compact(f.quote)}`, f])).values()];
   const errors: ErrorItem[] = [];
   const create = (rule: string, title: string, quote: string, suggestion: string, priority: 'P1' | 'P2' = 'P1') => {
     errors.push({ error_id: randomUUID(), rule_id: rule, title, severity: priority === 'P1' ? 'Critical' : 'High', priority, page_no: Math.max(0, sourcePage(text, quote)), snippet: quote, suggestion, confidence: 1 });
