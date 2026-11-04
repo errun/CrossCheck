@@ -17,7 +17,7 @@ export function ResourcePage({ lang, kind }: { lang: Language; kind: 'example' |
   ];
   const download = (resource: ResourceId, label: string, note: string) => <ResourceDownload resource={resource} lang={lang} label={label} note={note} />;
   const issueNames: Record<string, string> = { CONSISTENCY_PROJECT: 'Conflicting project IDs', CONSISTENCY_COMPANY: 'Conflicting bidder names', CONSISTENCY_PRICE: 'Conflicting total prices', CONSISTENCY_DELIVERY: 'Conflicting delivery periods', CONSISTENCY_VALIDITY: 'Conflicting validity periods', CONSISTENCY_WARRANTY: 'Conflicting warranty periods', CONSISTENCY_RESPONSE: 'Conflicting response times', CONSISTENCY_RESOLUTION: 'Conflicting resolution times', MISSING_AUTHORIZATION: 'Explicitly missing authorization' };
-  return <div className="min-h-screen bg-slate-50 text-slate-900">
+  return <div data-clarity-unmask="true" className="min-h-screen bg-slate-50 text-slate-900">
     <JsonLd data={{ '@context': 'https://schema.org', '@type': 'WebPage', name: title, url: SITE_URL + here, inLanguage: zh ? 'zh-Hans' : 'en', dateModified: CONTENT_UPDATED, publisher: { '@type': 'Organization', name: 'RFPAI', url: SITE_URL }, about: { '@type': 'Thing', name: 'RFP compliance matrix and bid document review' } }} />
     <JsonLd data={{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(item => ({ '@type': 'Question', name: item.q, acceptedAnswer: { '@type': 'Answer', text: item.a } })) }} />
     <header className="border-b border-slate-200 bg-white">

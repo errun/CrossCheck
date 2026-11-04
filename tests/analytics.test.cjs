@@ -12,7 +12,7 @@ test('production events contain only approved categories and analytics failures 
   global.window={location:{hostname:'rfpai.io'},gtag:(...args)=>calls.push(args)};
   toolEvent('writer','download','docx');resourceEvent('matrix_example','en');
   toolEvent('private-client.pdf','success');resourceEvent('secret filename','en');
-  assert.deepEqual(calls,[['event','tool_download',{tool:'writer',file_format:'docx'}],['event','resource_download',{resource:'matrix_example',language:'en'}]]);
+  assert.deepEqual(calls.filter(v=>v[0]==='event'),[['event','tool_download',{tool:'writer',file_format:'docx',test_mode:'live'}],['event','rfpai_writer_download',{tool:'writer',file_format:'docx',test_mode:'live'}],['event','resource_download',{resource:'matrix_example',language:'en',test_mode:'live'}]]);
   global.window.gtag=()=>{throw new Error('blocked tracker')};assert.doesNotThrow(()=>toolEvent('scanner','success'));
  }finally{global.window=previous;}
 });

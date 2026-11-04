@@ -2,7 +2,8 @@
 
 import { ToolGuide } from '@/components/ToolGuide';
 import { FreeMaterialConsent } from "@/components/FreeMaterialConsent";
-import { toolEvent } from "@/lib/tool-events";
+import { useToolJourney } from "@/components/useToolJourney";
+import { uploadValidationMessage } from "@/lib/tool-journey";
 import { useState } from "react";
 import type React from "react";
 import Link from "next/link";
@@ -599,6 +600,7 @@ ${bodyParts.join("\n")}
 
 export default function BidWriterPage({ lang }: { lang: Language }) {
   const [freeConsent, setFreeConsent] = useState(false);
+  const journey = useToolJourney('writer', lang);
   const [rfpFile, setRfpFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -612,16 +614,11 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
     const selected = e.target.files?.[0];
     if (!selected) return;
 
-    const lowerName = selected.name.toLowerCase();
-    if (lowerName.endsWith(".doc") && !lowerName.endsWith(".docx")) {
-      setRfpFile(null);
-      setDraft("");
-      setError(
-        "当前在线版本暂不支持直接解析 .doc，请先在本地另存为 .docx 或打印 / 另存为 PDF 后再上传。This online version does not currently support parsing .doc files directly. Please save the file as .docx or export it to PDF locally before uploading.",
-      );
-      try {
-        (e.target as HTMLInputElement).value = "";
-      } catch {}
+    const rejected = journey.selectFile(selected);
+    if (rejected) {
+      setRfpFile(null); setDraft(""); setFreeConsent(false);
+      setError(uploadValidationMessage(rejected, lang));
+      e.target.value = '';
       return;
     }
 
@@ -636,7 +633,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 
 
 	    // Authentication is not required for bid draft generation in the current low-volume phase.
-	    toolEvent('writer', 'start');
+	    journey.begin();
     setLoading(true);
 	    setError("");
 	    setDraft("");
@@ -650,7 +647,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 
 	      formData.append("lang", lang);
 	
-	      const res = await fetch("/api/generate-bid", { method: "POST", body: formData });
+	      const res = await journey.request("/api/generate-bid", { method: "POST", body: formData });
       if (!res.ok) {
         let message: string;
         let data: any = null;
@@ -672,11 +669,11 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 	      }
 	
 	      const data = await res.json();
-	      if (typeof data?.draft !== "string" || !data.draft.trim()) throw new Error(lang === "zh" ? "未生成完整草稿，请重试。" : "No complete draft was produced.");
+	      if (typeof data?.draft !== "string" || !data.draft.trim()) { journey.invalidResult(); throw new Error(lang === "zh" ? "未生成完整草稿，请重试。" : "No complete draft was produced."); }
       setDraft(data.draft);
-      toolEvent('writer', 'success');
+      journey.success();
     } catch (err: any) {
-	      toolEvent('writer', 'failure');
+	      journey.failure();
 	      setError(err?.message || (lang === "zh" ? "生成投标文件失败，请稍后重试" : "Failed to generate bid draft, please try again later"));
 	    } finally {
 	      setLoading(false);
@@ -690,16 +687,18 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
     if (!draft) return;
     try {
       await navigator.clipboard.writeText(draft);
-      toolEvent('writer', 'copy');
+      journey.copy(true);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
+      journey.copy(false);
       console.error("copy failed", e);
     }
   };
 
   const handleExportDocx = async () => {
     if (!draft) return;
+    journey.exportBegin('docx');
     try {
       setExporting(true);
       const res = await fetch("/api/bid-draft-docx", {
@@ -734,8 +733,9 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toolEvent('writer', 'download', 'docx');
+      journey.exportSuccess('docx');
     } catch (err: any) {
+      journey.exportFailure('docx');
       console.error("Bid writer export docx error:", err);
       setError(
         err?.message ||
@@ -750,10 +750,12 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 
 	  const handleExportPdf = () => {
 	    if (!draft) return;
+    journey.exportBegin('pdf_print');
 	    try {
 	      const html = buildPrintableHtml(draft, lang);
 	      const printWindow = window.open("", "_blank");
 	      if (!printWindow) {
+        journey.exportFailure('pdf_print', 'POPUP_BLOCKED');
 	        setError(
 	          lang === "zh"
 	            ? "浏览器拦截了新窗口，无法导出 PDF。请允许弹出窗口后重试。"
@@ -766,16 +768,17 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 	      printWindow.document.write(html);
 	      printWindow.document.close();
 	      printWindow.focus();
-      toolEvent('writer', 'export_requested', 'pdf_print');
+      journey.exportSuccess('pdf_print');
 	      // 略微延迟后再触发打印，确保样式已加载
 	      setTimeout(() => {
 	        try {
 	          printWindow.print();
 	        } catch {
-	          // ignore
+	          journey.exportFailure('pdf_print');
 	        }
 	      }, 300);
 	    } catch (err: any) {
+      journey.exportFailure('pdf_print');
 	      console.error("Bid writer export pdf error:", err);
 	      setError(
 	        err?.message ||
@@ -854,8 +857,8 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
                 />
               </label>
 	              <div className="flex flex-col items-end gap-2">
-	                <FreeMaterialConsent lang={lang} checked={freeConsent} onChange={setFreeConsent} />
-                  <Button onClick={handleGenerate} disabled={!rfpFile || loading || !freeConsent} size="sm">
+	                <FreeMaterialConsent lang={lang} checked={freeConsent} onChange={(checked) => { setFreeConsent(checked); journey.consent(checked); }} />
+                  <Button data-clarity-unmask="true" onClick={handleGenerate} disabled={!rfpFile || loading || !freeConsent} size="sm">
 	                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
 	                  {lang === "zh" ? "生成投标文件草稿" : "Generate bid draft"}
 	                </Button>
@@ -887,7 +890,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleCopy}
+                  data-clarity-unmask="true" onClick={handleCopy}
                   className="inline-flex items-center gap-1"
                 >
                   <ClipboardCopy className="w-4 h-4" />
@@ -896,7 +899,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
 	                <Button
 	                  variant="outline"
 	                  size="sm"
-	                  onClick={handleExportPdf}
+	                  data-clarity-unmask="true" onClick={handleExportPdf}
 	                  className="inline-flex items-center gap-1"
 	                >
 	                  <Download className="w-4 h-4" />
@@ -905,7 +908,7 @@ export default function BidWriterPage({ lang }: { lang: Language }) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleExportDocx}
+                  data-clarity-unmask="true" onClick={handleExportDocx}
                   disabled={exporting}
                   className="inline-flex items-center gap-1"
                 >
