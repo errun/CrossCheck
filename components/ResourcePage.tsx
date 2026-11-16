@@ -34,15 +34,30 @@ export function ResourcePage({ lang, kind }: { lang: Language; kind: 'example' |
       <div className="max-w-3xl">
         <p className="text-xs font-semibold uppercase tracking-widest text-blue-800">{zh ? (example ? '公开虚构案例 · 01' : '可下载工作表 · 02') : (example ? 'Fictional worked example · 01' : 'Downloadable workbooks · 02')}</p>
         <h1 className="mt-4 text-3xl font-semibold leading-tight tracking-tight md:text-5xl">{title}</h1>
-        <p className="mt-5 text-base leading-8 text-slate-600">{zh ? (example ? '同一套虚构招标文件和投标文件，分别用于要求提取、内部一致性检查与草稿生成。你可以下载原文，逐条对照结果，了解工具能帮助什么、哪些仍需人工完成。' : '先记录原文和来源，再分配责任人、填写响应依据，最后核实状态。这两份空白Excel模板无需注册即可下载，也可与RFPAI生成的矩阵一起使用。') : (example ? 'Follow one fictional Chinese-language procurement through requirement extraction, internal consistency checks and draft generation. Download the source files and inspect the outputs yourself.' : 'Record the source first, assign an owner, add proposal evidence and then review status. Download two blank Excel templates without signing up, or use them alongside a generated RFPAI matrix.')}</p>
+        <p className="mt-5 text-base leading-8 text-slate-600">{zh ? (example ? '同一套虚构招标文件和投标文件，分别用于要求提取、内部一致性检查与草稿生成。你可以下载原文，逐条对照结果，了解工具能帮助什么、哪些仍需人工完成。' : '先记录原文和来源，再分配责任人、填写响应依据，最后核实状态。这两份空白Excel模板无需注册即可下载，也可与RFPAI生成的矩阵一起使用。') : (example ? 'Work through a fictional English RFP and bid using the source documents, a manual requirements worksheet and a rule-based checklist. A second example walks through the full workflow with Chinese source files.' : 'Record the source first, assign an owner, add proposal evidence and then review status. Download two blank Excel templates without signing up, or use them alongside a generated RFPAI matrix.')}</p>
         <p className="mt-4 text-xs text-slate-500">{zh ? 'RFPAI产品示例与使用说明' : 'RFPAI product example and instructions'} · {zh ? '更新' : 'Updated'} {CONTENT_UPDATED}</p>
       </div>
 
       {example ? <>
+        {!zh && <section className="mt-10 rounded-2xl border border-blue-100 bg-blue-50/60 p-6" aria-labelledby="english-example">
+          <h2 id="english-example" className="text-2xl font-semibold">English RFP and bid review exercise</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-700">The two Word files describe a fictional procurement and include planted inconsistencies. The worksheet splits four source clauses into six obligations for manual review. The checklist shows nine alerts from the bid checker’s rules.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {download('english_example_rfp', 'English RFP · Word', 'Four source clauses covering price, delivery, warranty and incident handling.')}
+            {download('english_example_bid', 'English bid with planted issues · Word', 'Use this file to practice checking conflicting figures, deadlines and missing authorization.')}
+            {download('english_example_requirements', 'Six requirements for manual review · CSV', 'Includes the original clauses and Word paragraph references. Owner and evidence fields are blank.')}
+            {download('english_example_alerts', 'Nine rule-based alerts · CSV', 'Compare the evidence and suggested checks with the bid before deciding what to correct.')}
+          </div>
+          <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-700">Start with clause 1.4. It requires a response within two hours and a resolution plan within 24 hours. Track the two commitments on separate rows so each can be checked against its own evidence.</p>
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-blue-800">
+            <Link href="/compliance-matrix#upload" className="underline underline-offset-4">Try the RFP in the matrix tool</Link>
+            <Link href="/en#upload" className="underline underline-offset-4">Try the bid in the bid checker</Link>
+          </div>
+        </section>}
         <section aria-labelledby="sample-scope" className="mt-10 rounded-2xl border border-blue-100 bg-blue-50/60 p-6">
-          <h2 id="sample-scope" className="font-semibold">{zh ? '先了解这个样本的范围' : 'Understand the scope of this example'}</h2>
+          <h2 id="sample-scope" className="font-semibold">{zh ? '先了解这个样本的范围' : 'Chinese procurement example'}</h2>
           <p className="mt-2 max-w-4xl text-sm leading-7 text-slate-700">{zh ? '2页中文招标文件包含16条强制要求；另一份2页投标文件预埋8类问题，形成9条提示，其中故障响应与处理方案时限分别提示。材料、企业和项目均为虚构。这是单一样本的功能验证，不代表任何真实标书的完整率、准确率或废标判断。' : 'A two-page Chinese RFP contains 16 mandatory clauses. A separate two-page bid has eight planted issue categories producing nine alerts: incident response and resolution deadlines are reported separately. All organizations and projects are fictional. This single example does not establish accuracy, completeness or eligibility for real bids.'}</p>
-          {!zh && <p className="mt-2 text-sm leading-7 text-slate-700">The source PDFs, quoted evidence and exported examples remain in Chinese so you can verify the original wording. This is not an English-language benchmark.</p>}
+          {!zh && <p className="mt-2 text-sm leading-7 text-slate-700">The downloads and evidence below are in Chinese so you can check the original wording.</p>}
         </section>
         <section className="mt-12" aria-labelledby="downloads">
           <h2 id="downloads" className="text-2xl font-semibold">{zh ? '1. 下载原文和示例结果' : '1. Download sources and sample outputs'}</h2>
