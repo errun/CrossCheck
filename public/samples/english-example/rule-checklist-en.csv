@@ -1,0 +1,17 @@
+﻿Critical findings (P1 - review required)
+Number,Rule ID,Evidence,Risk,Suggestion,Source,Confidence
+"1","CONSISTENCY_PROJECT","Project ID: DEMO-EN-001","Project ID is inconsistent","Conflicting values: DEMO-EN-001 / DEMO-EN-002. Verify against the original evidence before making them consistent. Other excerpts: Project ID: DEMO-EN-002","Source paragraph","100%"
+"2","CONSISTENCY_COMPANY","Bidder name: Alpha Demonstration Ltd. (fictional)","Bidder name is inconsistent","Conflicting values: Alpha Demonstration Ltd. / Beta Demonstration Ltd.. Verify against the original evidence before making them consistent. Other excerpts: Bidder name: Beta Demonstration Ltd. (fictional)","Source paragraph","100%"
+"3","CONSISTENCY_PRICE","Total price: USD 120000","Total price is inconsistent","Conflicting values: 120000 / 130000. Verify against the original evidence before making them consistent. Other excerpts: Final total price: USD 130000","Source paragraph","100%"
+"4","CONSISTENCY_DELIVERY","Delivery period: 30 calendar days","Delivery period is inconsistent","Conflicting values: 30 / 45. Verify against the original evidence before making them consistent. Other excerpts: Delivery period: 45 calendar days","Source paragraph","100%"
+"5","CONSISTENCY_VALIDITY","Bid validity: 90 days","Bid validity is inconsistent","Conflicting values: 90 / 60. Verify against the original evidence before making them consistent. Other excerpts: Bid validity: 60 days","Source paragraph","100%"
+"6","CONSISTENCY_WARRANTY","Warranty: 36 months","Warranty period is inconsistent","Conflicting values: 36 / 24. Verify against the original evidence before making them consistent. Other excerpts: Warranty: 24 months","Source paragraph","100%"
+"7","CONSISTENCY_RESPONSE","Incident response: 2 hours","Incident response time is inconsistent","Conflicting values: 2 / 24. Verify against the original evidence before making them consistent. Other excerpts: Incident response: 24 hours","Source paragraph","100%"
+"8","CONSISTENCY_RESOLUTION","Resolution plan: 24 hours","Resolution deadline is inconsistent","Conflicting values: 24 / 48. Verify against the original evidence before making them consistent. Other excerpts: Resolution plan: 48 hours","Source paragraph","100%"
+
+Major findings (P2 - review required)
+Number,Rule ID,Evidence,Risk,Suggestion,Source,Confidence
+"1","MISSING_AUTHORIZATION","Authorization letter is not attached.","Authorization is missing","Supply the authorization letter and verify representative details. Pending attachments are not complete.","Source paragraph","100%"
+
+Format and completeness notes (P3)
+Number,Rule ID,Evidence,Risk,Suggestion,Source,Confidence
