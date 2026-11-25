@@ -24,7 +24,9 @@
 | tool_download | 导出请求返回文件并触发浏览器下载 | tool、file_format | 结果下载操作；不代表已打开或审核文件 |
 | tool_copy | 草稿写入剪贴板成功 | tool | 草稿复制使用 |
 | tool_export_requested | 已打开PDF打印窗口，准备触发打印 | tool、file_format | 打印导出请求，不代表PDF保存成功 |
-| resource_download | 点击公开案例或模板的下载链接 | resource、language | 资料下载意图，不代表保存完成或工具使用 |
+| resource_download | 点击公开案例或模板的下载链接 | resource、ui_language、language、test_mode | 资料下载意图，不代表保存完成或工具使用 |
+
+资料下载的页面语言使用已登记的 `ui_language` 事件维度，与工具事件采用同一口径。`language` 参数继续保留以兼容旧报表。`test_mode=qa` 用于标记测试访问，原先仅有 `language` 的历史事件无法补回页面语言维度。
 
 `tool`仅允许scanner/matrix/writer；`file_format`仅允许csv/xlsx_gov/xlsx_enterprise/docx/pdf_print；`resource`仅允许固定公开资料编号。禁止发送文件名、正文、报价、投标人名称或原始错误内容。
 

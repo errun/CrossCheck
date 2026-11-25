@@ -63,5 +63,5 @@ export function toolEvent(tool: TrackedTool, stage: ToolStage, format?: ExportFo
 }
 export function resourceEvent(resource: ResourceId, language: 'zh' | 'en') {
   if (!Object.prototype.hasOwnProperty.call(resourceDownloads, resource) || !['zh', 'en'].includes(language)) return;
-  emit('resource_download', { resource, language, ...(productionAnalytics() ? { test_mode: testMode() } : {}) });
+  emit('resource_download', { resource, language, ui_language: language, ...(productionAnalytics() ? { test_mode: testMode() } : {}) });
 }
